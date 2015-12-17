@@ -1,5 +1,10 @@
 #include "xbee_config.h"
 
+const char *const xbee_config::CONFIG_FILE = "xbee_config";
+const char *const xbee_config::PORT_KEY = "port";
+const char *const xbee_config::BAUD_KEY = "baud";
+const char xbee_config::SEPARATOR = '=';
+
 xbee_config::xbee_config()
 {
     std::ifstream config(CONFIG_FILE);

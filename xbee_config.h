@@ -17,10 +17,10 @@ public:
     xbee_config();
 
 private:
-    static constexpr const char *CONFIG_FILE = "xbee_config";
-    static constexpr const char *PORT_KEY = "port";
-    static constexpr const char *BAUD_KEY = "baud";
-    static constexpr const char SEPARATOR = '=';
+    static const char *const CONFIG_FILE;
+    static const char *const PORT_KEY;
+    static const char *const BAUD_KEY;
+    static const char SEPARATOR;
 };
 
 #endif

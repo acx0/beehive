@@ -1,5 +1,6 @@
+# CXX = g++
 CXX = clang++
-CXXFLAGS += -std=c++11 -Wall -Wextra
+CXXFLAGS += -std=c++11 -Wall -Wextra #-Wconversion
 CPPFLAGS += -MMD -MP
 LDFLAGS += -lserial
 

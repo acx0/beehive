@@ -1,8 +1,9 @@
 #include <cstdlib>
 #include <iostream>
 
-#include <unistd.h>
-
+#include "at_command_frame.h"
+#include "at_command.h"
+#include "uart_frame.h"
 #include "xbee_s1.h"
 
 int main(int argc, char *argv[])
@@ -15,6 +16,9 @@ int main(int argc, char *argv[])
         {
             return EXIT_FAILURE;
         }
+
+        xbee.write_frame(uart_frame(std::make_shared<at_command_frame>(at_command::API_ENABLE)));
+        auto response = xbee.read_frame();
     }
     catch (const std::exception &e)
     {

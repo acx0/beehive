@@ -1,20 +1,24 @@
 #include "at_command.h"
 
-at_command::at_command(const char *command, int parameter)
+const char *const at_command::RESPONSE_SUCCESS = "OK";
+const char *const at_command::RESPONSE_ERROR = "ERROR";
+
+const char *const at_command::AT_PREFIX = "AT";
+const char *const at_command::API_ENABLE = "AP";
+const char *const at_command::EXIT_COMMAND_MODE = "CN";
+
+const char *const at_command::REGISTER_QUERY = "";
+const char at_command::CR = '\r';
+
+at_command::at_command(const std::string &command, const std::string &parameter)
     : command(command), parameter(parameter)
 {
 }
 
 at_command::operator std::string() const
 {
-    std::stringstream ss;
-    ss << AT_PREFIX << command;
+    std::ostringstream oss;
+    oss << AT_PREFIX << command << parameter << CR;
 
-    if (parameter != QUERY_COMMAND)
-    {
-        ss << std::hex << parameter;
-    }
-
-    ss << CR;
-    return ss.str();
+    return oss.str();
 }

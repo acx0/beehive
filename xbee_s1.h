@@ -3,26 +3,33 @@
 
 #include <exception>
 #include <iostream>
+#include <memory>
 #include <string>
 
 #include "serial/serial.h"
 
 #include "at_command.h"
+#include "at_command_response_frame.h"
+#include "uart_frame.h"
 #include "util.h"
 #include "xbee_config.h"
 
 class xbee_s1
 {
 public:
-    // setting timeout <= 525 seems to cause serial reads to sometimes return nothing on odroid
-    static constexpr uint32_t DEFAULT_TIMEOUT_MS = 700;
-    static constexpr uint32_t DEFAULT_GUARD_TIME_S = 1;
-    static constexpr uint32_t DEFAULT_COMMAND_MODE_TIMEOUT_S = 10;
-    static constexpr const char *COMMAND_SEQUENCE = "+++";
+    static const uint32_t DEFAULT_TIMEOUT_MS;
+    static const uint32_t DEFAULT_GUARD_TIME_S;
+    static const uint32_t DEFAULT_COMMAND_MODE_TIMEOUT_S;
+    static const uint8_t HEADER_LENGTH_END_POSITION;
+    static const uint8_t API_IDENTIFIER_INDEX;
+    static const char *const COMMAND_SEQUENCE;
 
     xbee_s1();
 
     bool enable_api_mode();
+    void write_frame(const std::vector<uint8_t> &payload);
+    std::unique_ptr<uart_frame> read_frame();
+    // TODO: read_frames()
 
 private:
     std::string execute_command(const at_command &command);

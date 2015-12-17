@@ -7,24 +7,23 @@
 class at_command
 {
 public:
-    static constexpr const char *RESPONSE_SUCCESS = "OK";
-    static constexpr const char *RESPONSE_ERROR = "ERROR";
+    static const char *const RESPONSE_SUCCESS;
+    static const char *const RESPONSE_ERROR;
 
-    static constexpr const char *API_ENABLE = "AP";
-    static constexpr const char *EXIT_COMMAND_MODE = "CN";
+    static const char *const AT_PREFIX;
+    static const char *const API_ENABLE;
+    static const char *const EXIT_COMMAND_MODE;
 
-    static constexpr char CR = '\r';
-    static constexpr int QUERY_COMMAND = -1;
+    static const char *const REGISTER_QUERY;
+    static const char CR;
 
-    at_command(const char *command, int parameter = QUERY_COMMAND);
+    at_command(const std::string &command, const std::string &parameter = REGISTER_QUERY);
 
     operator std::string() const;
 
 private:
-    static constexpr const char *AT_PREFIX = "AT";
-
-    const char *command;
-    int parameter;
+    std::string command;
+    std::string parameter;
 };
 
 #endif
