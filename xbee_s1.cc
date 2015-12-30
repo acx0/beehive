@@ -27,6 +27,21 @@ bool xbee_s1::enable_api_mode()
     return true;
 }
 
+// TODO: can also do this with at_command_frame once api mode is enabled
+bool xbee_s1::enable_64_bit_addressing()
+{
+    // enable 64 bit addressing mode by setting 16 bit address to 0xFFFF
+    std::string response = execute_command(at_command(at_command::SOURCE_ADDRESS_16_BIT, "FFFF"));
+    if (response != at_command::RESPONSE_SUCCESS)
+    {
+        std::cerr << "could not enable 64 bit addressing mode" << std::endl;
+        return false;
+    }
+
+    std::clog << "64 bit addressing mode successfully enabled" << std::endl;
+    return true;
+}
+
 std::string xbee_s1::execute_command(const at_command &command)
 {
     std::string response;

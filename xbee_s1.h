@@ -28,7 +28,9 @@ public:
 
     xbee_s1();
 
+    // TODO: move setup code into single method
     bool enable_api_mode();
+    bool enable_64_bit_addressing();
     void write_frame(const std::vector<uint8_t> &payload);
     std::unique_ptr<uart_frame> read_frame();
     // TODO: read_frames()
