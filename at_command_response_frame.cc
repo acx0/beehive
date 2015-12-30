@@ -7,6 +7,12 @@ const size_t at_command_response_frame::MIN_FRAME_DATA_LENGTH = 5;
 at_command_response_frame::at_command_response_frame(const std::vector<uint8_t> &frame)
     : frame_data(api_identifier::at_command_response)
 {
+    if (frame[0] != api_identifier::at_command_response)
+    {
+        // TODO: exception
+        std::cerr << "not an at_command_response frame" << std::endl;
+    }
+
     if (frame.size() < MIN_FRAME_DATA_LENGTH)
     {
         // TODO: exception
@@ -20,7 +26,7 @@ at_command_response_frame::at_command_response_frame(const std::vector<uint8_t> 
 
     if (frame.size() > MIN_FRAME_DATA_LENGTH)
     {
-        value = std::string(frame.begin() + 5, frame.end());
+        value = std::string(frame.begin() + MIN_FRAME_DATA_LENGTH, frame.end());
     }
 }
 

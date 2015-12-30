@@ -1,11 +1,8 @@
 #include "at_command_frame.h"
 
 at_command_frame::at_command_frame(const std::string &command, const std::string &parameter)
-    : frame_data(api_identifier::at_command)
+    : frame_data(api_identifier::at_command), frame_id(get_next_frame_id())
 {
-    // TODO: create static class to increment frame_id globally
-    frame_id = 1;
-
     if (command.size() != 2)
     {
         // TODO: throw exception
