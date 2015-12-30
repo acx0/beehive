@@ -40,15 +40,7 @@ uart_frame::operator std::vector<uint8_t>() const
 
     for (auto i : payload)
     {
-        if (i == FRAME_DELIMITER || i == ESCAPE || i == XON || i == XOFF)
-        {
-            frame.push_back(ESCAPE);
-            frame.push_back(i ^ XOR_CONST);
-        }
-        else
-        {
-            frame.push_back(i);
-        }
+        frame.push_back(i);
     }
 
     frame.push_back(compute_checksum(payload));

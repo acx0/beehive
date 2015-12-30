@@ -15,8 +15,8 @@ xbee_s1::xbee_s1()
 
 bool xbee_s1::enable_api_mode()
 {
-    // put device in API mode 2 (enabled with escape characters)
-    std::string response = execute_command(at_command(at_command::API_ENABLE, "2"));
+    // put device in API mode 1 (enabled without escape characters)
+    std::string response = execute_command(at_command(at_command::API_ENABLE, "1"));
     if (response != at_command::RESPONSE_SUCCESS)
     {
         std::cerr << "could not enter api mode" << std::endl;
@@ -118,7 +118,13 @@ std::unique_ptr<uart_frame> xbee_s1::read_frame()
 
     if (bytes_read != HEADER_LENGTH_END_POSITION)
     {
-        std::cerr << "could not read frame length" << std::endl;
+        std::cerr << "could not read frame delimiter + length" << std::endl;
+        return nullptr;
+    }
+
+    if (frame_head[0] != uart_frame::FRAME_DELIMITER)
+    {
+        std::cerr << "frame_head did not contain valid start delimiter" << std::endl;
         return nullptr;
     }
 
@@ -126,17 +132,9 @@ std::unique_ptr<uart_frame> xbee_s1::read_frame()
     length += frame_head[1] << (sizeof(uint8_t) * 8);
     length += frame_head[2];
 
-    std::vector<uint8_t> frame_tail;    // contains api identifer to checksum bytes
+    // note: in API mode 2 (enabled with escape characters) length field doesn't account for escaped chars; checksum can be escaped
+    std::vector<uint8_t> frame_tail;    // contains api identifier to checksum bytes
     bytes_read = serial.read(frame_tail, length + 1);    // payload + checksum
-
-    // TODO: will response ever have an escaped char? if so have to rewrite to read 1 byte at a time, length times (not counting escapes as a read)
-    for (auto i : frame_tail)
-    {
-        if (i == uart_frame::ESCAPE)
-        {
-            std::cerr << "<<< FOUND ESCAPE IN PAYLOAD >>>" << std::endl;
-        }
-    }
 
     if (bytes_read != length + 1)
     {
