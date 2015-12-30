@@ -10,6 +10,7 @@
 
 #include "at_command.h"
 #include "at_command_response_frame.h"
+#include "rx_packet_64_frame.h"
 #include "tx_status_frame.h"
 #include "uart_frame.h"
 #include "util.h"

@@ -155,6 +155,10 @@ std::unique_ptr<uart_frame> xbee_s1::read_frame()
 
     switch (frame_tail[API_IDENTIFIER_INDEX])
     {
+        case frame_data::api_identifier::rx_packet_64:
+            return std::unique_ptr<uart_frame>(new uart_frame(frame_head[1], frame_head[2],
+                std::make_shared<rx_packet_64_frame>(frame_tail), received_checksum));
+
         case frame_data::api_identifier::at_command_response:
             return std::unique_ptr<uart_frame>(new uart_frame(frame_head[1], frame_head[2],
                 std::make_shared<at_command_response_frame>(frame_tail), received_checksum));

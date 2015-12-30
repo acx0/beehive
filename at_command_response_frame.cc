@@ -34,6 +34,7 @@ at_command_response_frame::operator std::vector<uint8_t>() const
 {
     std::vector<uint8_t> frame;
 
+    frame.push_back(api_identifier);
     frame.push_back(frame_id);
     frame.push_back(at_command[0]);
     frame.push_back(at_command[1]);
