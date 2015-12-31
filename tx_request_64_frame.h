@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "frame_data.h"
+#include "util.h"
 
 class tx_request_64_frame : public frame_data
 {

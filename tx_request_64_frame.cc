@@ -14,15 +14,7 @@ tx_request_64_frame::operator std::vector<uint8_t>() const
 
     frame.push_back(api_identifier);
     frame.push_back(frame_id);
-
-    // pack 8 byte address as 8 single bytes, MSB first
-    uint64_t mask = 0xff;
-    for (int i = 7; i >= 0; --i)
-    {
-        auto shift = sizeof(uint8_t) * i * 8;
-        frame.push_back((destination_address & (mask << shift)) >> shift);
-    }
-
+    util::pack_value_as_bytes(frame, destination_address);  // pack 8 byte address as 8 single bytes
     frame.push_back(options);
 
     for (auto i : rf_data)

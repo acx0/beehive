@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "frame_data.h"
+#include "util.h"
 
 class uart_frame
 {

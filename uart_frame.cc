@@ -34,9 +34,8 @@ uart_frame::operator std::vector<uint8_t>() const
 
     frame.push_back(FRAME_DELIMITER);
     auto payload = static_cast<std::vector<uint8_t>>(*data);
-    auto payload_length = payload.size();
-    frame.push_back((payload_length & 0xff00) >> (sizeof(uint8_t) * 8));
-    frame.push_back(payload_length & 0xff);
+    auto payload_length = static_cast<uint16_t>(payload.size());
+    util::pack_value_as_bytes(frame, payload_length);   // pack 2 byte length as 2 single bytes
 
     for (auto i : payload)
     {

@@ -20,12 +20,9 @@ rx_packet_64_frame::rx_packet_64_frame(const std::vector<uint8_t> &frame)
         std::cerr << "invalid frame size" << std::endl;
     }
 
-    // unpack 8 byte address from bytes 1-8, MSB first
-    for (size_t i = 1; i <= 8; ++i)
-    {
-        source_address += static_cast<uint64_t>(frame[i]) << (sizeof(uint8_t) * (8 - i) * 8);
-    }
-
+    // unpack 8 byte address from bytes 1-8
+    auto offset = 1;
+    source_address = util::unpack_bytes_to_width<uint64_t>(std::vector<uint8_t>(frame.begin() + offset, frame.begin() + offset + 8));
     rssi = frame[9];
     options = frame[10];
 
@@ -40,15 +37,7 @@ rx_packet_64_frame::operator std::vector<uint8_t>() const
     std::vector<uint8_t> frame;
 
     frame.push_back(api_identifier);
-
-    // pack 8 byte address as 8 single bytes, MSB first
-    uint64_t mask = 0xff;
-    for (int i = 7; i >= 0; --i)
-    {
-        auto shift = sizeof(uint8_t) * i * 8;
-        frame.push_back((source_address & (mask << shift)) >> shift);
-    }
-
+    util::pack_value_as_bytes(frame, source_address);   // pack 8 byte address as 8 single bytes
     frame.push_back(rssi);
     frame.push_back(options);
 

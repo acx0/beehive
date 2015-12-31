@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "frame_data.h"
+#include "util.h"
 
 class rx_packet_64_frame : public frame_data
 {
