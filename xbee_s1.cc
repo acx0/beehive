@@ -196,12 +196,15 @@ std::unique_ptr<uart_frame> xbee_s1::read_frame()
 {
     // read up to length header first to determine how many more bytes to read from serial line
     std::vector<uint8_t> frame_head;    // contains start delimiter to length bytes
-    size_t bytes_read = serial.read(frame_head, HEADER_LENGTH_END_POSITION);
-    std::clog << "read  [" << util::get_frame_hex(frame_head) << "] (" << bytes_read << " bytes)" << std::endl;
+    size_t bytes_read_h = serial.read(frame_head, HEADER_LENGTH_END_POSITION);
 
-    if (bytes_read != HEADER_LENGTH_END_POSITION)
+    if (bytes_read_h != HEADER_LENGTH_END_POSITION)
     {
-        std::cerr << "could not read frame delimiter + length" << std::endl;
+        if (bytes_read_h != 0)
+        {
+            std::cerr << "could not read frame delimiter + length" << std::endl;
+        }
+
         return nullptr;
     }
 
@@ -217,15 +220,16 @@ std::unique_ptr<uart_frame> xbee_s1::read_frame()
 
     // note: in API mode 2 (enabled with escape characters) length field doesn't account for escaped chars; checksum can be escaped
     std::vector<uint8_t> frame_tail;    // contains api identifier to checksum bytes
-    bytes_read = serial.read(frame_tail, length + 1);    // payload + checksum
+    size_t bytes_read_t = serial.read(frame_tail, length + 1);    // payload + checksum
 
-    if (bytes_read != length + 1)
+    if (bytes_read_t != length + 1)
     {
-        std::cerr << "could not read rest of frame (expected: " << length + 1 << ", read: " << bytes_read << " bytes)" << std::endl;
+        std::cerr << "could not read rest of frame (expected: " << length + 1 << ", read: " << bytes_read_t << " bytes)" << std::endl;
         return nullptr;
     }
 
-    std::clog << "read  [" << util::get_frame_hex(frame_tail) << "] (" << bytes_read << " bytes)" << std::endl;
+    std::clog << "read  [" << util::get_frame_hex(frame_head) << " " << util::get_frame_hex(frame_tail) << "] ("
+        << bytes_read_h + bytes_read_t << " bytes)" << std::endl;
     uint8_t received_checksum = frame_tail[length];
     frame_tail.resize(length);  // truncate checksum byte
     uint8_t calculated_checksum = uart_frame::compute_checksum(frame_tail);
