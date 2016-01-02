@@ -1,5 +1,6 @@
 #include "xbee_s1.h"
 
+const uint64_t xbee_s1::ADDRESS_UNKNOWN = 0xffffffffffffffff;
 // setting timeout <= 525 seems to cause serial reads to sometimes return nothing on odroid
 const uint32_t xbee_s1::DEFAULT_TIMEOUT_MS = 700;
 const uint32_t xbee_s1::DEFAULT_GUARD_TIME_S = 1;
@@ -9,7 +10,7 @@ const uint8_t xbee_s1::API_IDENTIFIER_INDEX = 0;
 const char *const xbee_s1::COMMAND_SEQUENCE = "+++";
 
 xbee_s1::xbee_s1()
-    : serial(config.port, config.baud, serial::Timeout::simpleTimeout(DEFAULT_TIMEOUT_MS))
+    : address(ADDRESS_UNKNOWN), serial(config.port, config.baud, serial::Timeout::simpleTimeout(DEFAULT_TIMEOUT_MS))
 {
 }
 
@@ -27,18 +28,64 @@ bool xbee_s1::enable_api_mode()
     return true;
 }
 
-// TODO: can also do this with at_command_frame once api mode is enabled
 bool xbee_s1::enable_64_bit_addressing()
 {
-    // enable 64 bit addressing mode by setting 16 bit address to 0xFFFF
-    std::string response = execute_command(at_command(at_command::SOURCE_ADDRESS_16_BIT, "FFFF"));
-    if (response != at_command::RESPONSE_SUCCESS)
+    // enable 64 bit addressing mode by setting 16 bit address to 0xffff
+    auto response = write_at_command_frame(std::make_shared<at_command_frame>(
+        at_command::SOURCE_ADDRESS_16_BIT, std::vector<uint8_t> { 0xff, 0xff }));
+
+    if (response->get_status() != at_command_response_frame::status::ok)
     {
         std::cerr << "could not enable 64 bit addressing mode" << std::endl;
         return false;
     }
 
     std::clog << "64 bit addressing mode successfully enabled" << std::endl;
+    return true;
+}
+
+bool xbee_s1::read_ieee_source_address()
+{
+    std::vector<uint8_t> address;
+    auto response = write_at_command_frame(std::make_shared<at_command_frame>(at_command::SERIAL_NUMBER_HIGH));
+
+    if (response->get_status() != at_command_response_frame::status::ok)
+    {
+        std::cerr << "could not read serial number high, status: " << +response->get_status() << std::endl;
+        return false;
+    }
+
+    auto value = response->get_value();
+    if (value.size() != sizeof(uint32_t))
+    {
+        std::cerr << "invalid at_command_response value size for serial number high" << std::endl;
+        return false;
+    }
+
+    address.insert(address.end(), value.begin(), value.end());
+    response = write_at_command_frame(std::make_shared<at_command_frame>(at_command::SERIAL_NUMBER_LOW));
+
+    if (response->get_status() != at_command_response_frame::status::ok)
+    {
+        std::cerr << "could not read serial number low, status: " << +response->get_status() << std::endl;
+        return false;
+    }
+
+    value = response->get_value();
+    if (value.size() != sizeof(uint32_t))
+    {
+        std::cerr << "invalid at_command_response value size for serial number low" << std::endl;
+        return false;
+    }
+
+    address.insert(address.end(), value.begin(), value.end());
+    this->address = util::unpack_bytes_to_width<uint64_t>(address);
+
+    // TODO: do iomanip settings have to be reverted? use ostringstream for now
+    std::ostringstream oss;
+    oss << "ieee source address: 0x" << std::setfill('0') << std::setw(16) << std::hex << +this->address;
+    std::cout << oss.str() << std::endl;
+
     return true;
 }
 
@@ -113,6 +160,27 @@ void xbee_s1::write_frame(const std::vector<uint8_t> &payload)
     }
 
     std::clog << "write [" << util::get_frame_hex(payload) << "] (" << bytes_written << " bytes)" << std::endl;
+}
+
+std::shared_ptr<at_command_response_frame> xbee_s1::write_at_command_frame(std::shared_ptr<at_command_frame> command)
+{
+    write_frame(uart_frame(command));
+    auto response = read_frame();
+
+    if (response == nullptr)
+    {
+        std::cerr << "could not read response to " << command->get_at_command() << " command" << std::endl;
+        return nullptr;
+    }
+
+    // TODO: have casting done in derived frame_data classes? better way to do this?
+    if (response->get_api_identifier() != frame_data::api_identifier::at_command_response)
+    {
+        std::cerr << "response frame is not an at_command_response" << std::endl;
+        return nullptr;
+    }
+
+    return std::static_pointer_cast<at_command_response_frame>(response->get_data());
 }
 
 std::string xbee_s1::read_line()

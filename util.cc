@@ -54,7 +54,8 @@ std::string util::get_frame_hex(const std::vector<uint8_t> &frame, bool show_pre
             oss << "0x";
         }
 
-        oss << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(frame[i]);
+        // +frame[i] promotes to type printable as number so that value isn't printed as char
+        oss << std::setfill('0') << std::setw(2) << std::hex << +frame[i];
 
         if (i < frame.size() - 1)
         {

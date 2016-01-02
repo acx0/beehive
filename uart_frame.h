@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <numeric>
 #include <vector>
 
 #include "frame_data.h"
@@ -20,6 +21,9 @@ public:
     uart_frame(std::shared_ptr<frame_data> data);
     uart_frame(uint8_t length_msb, uint8_t length_lsb, std::shared_ptr<frame_data> data, uint8_t checksum);
 
+    uint8_t get_api_identifier();
+    std::shared_ptr<frame_data> get_data();
+
     static uint8_t compute_checksum(const std::vector<uint8_t> &payload);
 
     operator std::vector<uint8_t>() const;
@@ -28,7 +32,7 @@ private:
     // note: length and checksum fields only populated when reading response frames
     uint8_t length_msb;
     uint8_t length_lsb;
-    std::shared_ptr<frame_data> data;   // TODO: unique_ptr?
+    std::shared_ptr<frame_data> data;
     uint8_t checksum;
 };
 

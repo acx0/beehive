@@ -1,20 +1,26 @@
 #include "at_command_frame.h"
 
-at_command_frame::at_command_frame(const std::string &command, const std::string &parameter)
-    : frame_data(api_identifier::at_command), frame_id(get_next_frame_id())
+const std::vector<uint8_t> at_command_frame::REGISTER_QUERY;
+
+at_command_frame::at_command_frame(const std::string &command, const std::vector<uint8_t> &parameter)
+    : frame_data(api_identifier::at_command), frame_id(get_next_frame_id())     // TODO: only assign frame id upon successful construction?
 {
     if (command.size() != 2)
     {
         // TODO: throw exception
     }
 
-    at_command[0] = command[0];
-    at_command[1] = command[1];
+    at_command = command;
 
-    if (parameter != at_command::REGISTER_QUERY)
+    if (parameter != REGISTER_QUERY)
     {
         this->parameter = parameter;
     }
+}
+
+const std::string &at_command_frame::get_at_command() const
+{
+    return at_command;
 }
 
 at_command_frame::operator std::vector<uint8_t>() const
@@ -23,13 +29,8 @@ at_command_frame::operator std::vector<uint8_t>() const
 
     frame.push_back(api_identifier);
     frame.push_back(frame_id);
-    frame.push_back(at_command[0]);
-    frame.push_back(at_command[1]);
-
-    for (auto i : parameter)
-    {
-        frame.push_back(i);
-    }
+    frame.insert(frame.end(), at_command.begin(), at_command.end());
+    frame.insert(frame.end(), parameter.begin(), parameter.end());
 
     return frame;
 }

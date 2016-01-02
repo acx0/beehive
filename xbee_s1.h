@@ -1,13 +1,18 @@
 #ifndef XBEE_S1_H
 #define XBEE_S1_H
 
+#include <cstdint>
 #include <exception>
+#include <iomanip>
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
+#include <vector>
 
 #include "serial/serial.h"
 
+#include "at_command_frame.h"
 #include "at_command.h"
 #include "at_command_response_frame.h"
 #include "rx_packet_64_frame.h"
@@ -19,6 +24,7 @@
 class xbee_s1
 {
 public:
+    static const uint64_t ADDRESS_UNKNOWN;
     static const uint32_t DEFAULT_TIMEOUT_MS;
     static const uint32_t DEFAULT_GUARD_TIME_S;
     static const uint32_t DEFAULT_COMMAND_MODE_TIMEOUT_S;
@@ -31,7 +37,11 @@ public:
     // TODO: move setup code into single method
     bool enable_api_mode();
     bool enable_64_bit_addressing();
+    bool read_ieee_source_address();
+
     void write_frame(const std::vector<uint8_t> &payload);
+
+    std::shared_ptr<at_command_response_frame> write_at_command_frame(std::shared_ptr<at_command_frame> command);
     std::unique_ptr<uart_frame> read_frame();
     // TODO: read_frames()
 
@@ -41,6 +51,7 @@ private:
     void write_string(const std::string &str);
     std::string read_line();
 
+    uint64_t address;
     xbee_config config;
     serial::Serial serial;
 };

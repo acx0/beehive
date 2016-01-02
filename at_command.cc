@@ -7,6 +7,8 @@ const char *const at_command::AT_PREFIX = "AT";
 const char *const at_command::API_ENABLE = "AP";
 const char *const at_command::EXIT_COMMAND_MODE = "CN";
 const char *const at_command::SOURCE_ADDRESS_16_BIT = "MY";
+const char *const at_command::SERIAL_NUMBER_HIGH = "SH";
+const char *const at_command::SERIAL_NUMBER_LOW = "SL";
 
 const char *const at_command::REGISTER_QUERY = "";
 const char at_command::CR = '\r';

@@ -11,14 +11,18 @@
 class at_command_frame : public frame_data
 {
 public:
-    at_command_frame(const std::string &command, const std::string &parameter = at_command::REGISTER_QUERY);
+    static const std::vector<uint8_t> REGISTER_QUERY;
+
+    at_command_frame(const std::string &command, const std::vector<uint8_t> &parameter = REGISTER_QUERY);
+
+    const std::string &get_at_command() const;
 
     operator std::vector<uint8_t>() const override;
 
 private:
     uint8_t frame_id;
-    uint8_t at_command[2];
-    std::string parameter;
+    std::string at_command;
+    std::vector<uint8_t> parameter;
 };
 
 #endif

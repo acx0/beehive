@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <iostream>
-#include <string>
 #include <vector>
 
 #include "frame_data.h"
@@ -23,13 +22,16 @@ public:
 
     at_command_response_frame(const std::vector<uint8_t> &frame);
 
+    uint8_t get_status();
+    const std::vector<uint8_t> &get_value() const;
+
     operator std::vector<uint8_t>() const override;
 
 private:
     uint8_t frame_id;
     uint8_t at_command[2];
     uint8_t status;
-    std::string value;     // TODO: string or vector<uint8_t>?
+    std::vector<uint8_t> value;
 };
 
 #endif

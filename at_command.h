@@ -14,6 +14,8 @@ public:
     static const char *const API_ENABLE;
     static const char *const EXIT_COMMAND_MODE;
     static const char *const SOURCE_ADDRESS_16_BIT;
+    static const char *const SERIAL_NUMBER_HIGH;
+    static const char *const SERIAL_NUMBER_LOW;
 
     static const char *const REGISTER_QUERY;
     static const char CR;

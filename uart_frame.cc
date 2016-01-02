@@ -16,16 +16,19 @@ uart_frame::uart_frame(uint8_t length_msb, uint8_t length_lsb, std::shared_ptr<f
 {
 }
 
+uint8_t uart_frame::get_api_identifier()
+{
+    return data->api_identifier;
+}
+
+std::shared_ptr<frame_data> uart_frame::get_data()
+{
+    return data;
+}
+
 uint8_t uart_frame::compute_checksum(const std::vector<uint8_t> &payload)
 {
-    uint8_t checksum = 0;
-
-    for (auto i : payload)
-    {
-        checksum += i;
-    }
-
-    return 0xff - checksum;
+    return 0xff - std::accumulate(payload.begin(), payload.end(), static_cast<uint8_t>(0));
 }
 
 uart_frame::operator std::vector<uint8_t>() const
@@ -36,12 +39,8 @@ uart_frame::operator std::vector<uint8_t>() const
     auto payload = static_cast<std::vector<uint8_t>>(*data);
     auto payload_length = static_cast<uint16_t>(payload.size());
     util::pack_value_as_bytes(frame, payload_length);   // pack 2 byte length as 2 single bytes
-
-    for (auto i : payload)
-    {
-        frame.push_back(i);
-    }
-
+    frame.insert(frame.end(), payload.begin(), payload.end());
     frame.push_back(compute_checksum(payload));
+
     return frame;
 }

@@ -26,8 +26,18 @@ at_command_response_frame::at_command_response_frame(const std::vector<uint8_t> 
 
     if (frame.size() > MIN_FRAME_DATA_LENGTH)
     {
-        value = std::string(frame.begin() + MIN_FRAME_DATA_LENGTH, frame.end());
+        value = std::vector<uint8_t>(frame.begin() + MIN_FRAME_DATA_LENGTH, frame.end());
     }
+}
+
+uint8_t at_command_response_frame::get_status()
+{
+    return status;
+}
+
+const std::vector<uint8_t> &at_command_response_frame::get_value() const
+{
+    return value;
 }
 
 at_command_response_frame::operator std::vector<uint8_t>() const
@@ -36,14 +46,9 @@ at_command_response_frame::operator std::vector<uint8_t>() const
 
     frame.push_back(api_identifier);
     frame.push_back(frame_id);
-    frame.push_back(at_command[0]);
-    frame.push_back(at_command[1]);
+    frame.insert(frame.end(), std::begin(at_command), std::end(at_command));
     frame.push_back(status);
-
-    for (auto i : value)
-    {
-        frame.push_back(i);
-    }
+    frame.insert(frame.end(), value.begin(), value.end());
 
     return frame;
 }
