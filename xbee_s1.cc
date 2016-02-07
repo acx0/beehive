@@ -138,7 +138,27 @@ bool xbee_s1::enter_command_mode()
 
 void xbee_s1::write_string(const std::string &str)
 {
-    size_t bytes_written = serial.write(str);
+    size_t bytes_written;
+
+    try
+    {
+        bytes_written = serial.write(str);
+    }
+    catch (const serial::PortNotOpenedException &e)
+    {
+        std::clog << "write_string: caught PortNotOpenedException: " << e.what() << std::endl;
+        return;
+    }
+    catch (const serial::SerialException &e)
+    {
+        std::clog << "write_string: caught SerialException: " << e.what() << std::endl;
+        return;
+    }
+    catch (const serial::IOException &e)
+    {
+        std::clog << "write_string: caught IOException: " << e.what() << std::endl;
+        return;
+    }
 
     if (bytes_written != str.size())
     {
@@ -149,9 +169,30 @@ void xbee_s1::write_string(const std::string &str)
     std::clog << "write [" << util::get_escaped_string(str) << "] (" << bytes_written << " bytes)" << std::endl;
 }
 
+// TODO: return status
 void xbee_s1::write_frame(const std::vector<uint8_t> &payload)
 {
-    size_t bytes_written = serial.write(payload);
+    size_t bytes_written;
+
+    try
+    {
+        bytes_written = serial.write(payload);
+    }
+    catch (const serial::PortNotOpenedException &e)
+    {
+        std::clog << "write_frame: caught PortNotOpenedException: " << e.what() << std::endl;
+        return;
+    }
+    catch (const serial::SerialException &e)
+    {
+        std::clog << "write_frame: caught SerialException: " << e.what() << std::endl;
+        return;
+    }
+    catch (const serial::IOException &e)
+    {
+        std::clog << "write_frame: caught IOException: " << e.what() << std::endl;
+        return;
+    }
 
     if (bytes_written != payload.size())
     {
@@ -186,21 +227,62 @@ std::shared_ptr<at_command_response_frame> xbee_s1::write_at_command_frame(std::
 std::string xbee_s1::read_line()
 {
     std::string result;
-    size_t bytes_read = serial.readline(result);
+    size_t bytes_read;
+
+    try
+    {
+        bytes_read = serial.readline(result);
+    }
+    catch (const serial::PortNotOpenedException &e)
+    {
+        std::clog << "read_line: caught PortNotOpenedException: " << e.what() << std::endl;
+        return std::string();
+    }
+    catch (const serial::SerialException &e)
+    {
+        std::clog << "read_line: caught SerialException: " << e.what() << std::endl;
+        return std::string();
+    }
+    catch (const serial::IOException &e)
+    {
+        std::clog << "read_line: caught IOException: " << e.what() << std::endl;
+        return std::string();
+    }
+
     std::clog << "read  [" << util::get_escaped_string(result) << "] (" << bytes_read << " bytes)" << std::endl;
 
     return util::strip_newline(result);
 }
 
-std::unique_ptr<uart_frame> xbee_s1::read_frame()
+std::shared_ptr<uart_frame> xbee_s1::read_frame()
 {
     // read up to length header first to determine how many more bytes to read from serial line
     std::vector<uint8_t> frame_head;    // contains start delimiter to length bytes
-    size_t bytes_read_h = serial.read(frame_head, HEADER_LENGTH_END_POSITION);
+    size_t bytes_read_head;
 
-    if (bytes_read_h != HEADER_LENGTH_END_POSITION)
+    try
     {
-        if (bytes_read_h != 0)
+        bytes_read_head = serial.read(frame_head, HEADER_LENGTH_END_POSITION);
+    }
+    catch (const serial::PortNotOpenedException &e)
+    {
+        std::clog << "read_frame: caught PortNotOpenedException: " << e.what() << std::endl;
+        return nullptr;
+    }
+    catch (const serial::SerialException &e)
+    {
+        std::clog << "read_frame: caught SerialException: " << e.what() << std::endl;
+        return nullptr;
+    }
+    catch (const serial::IOException &e)
+    {
+        std::clog << "read_frame: caught IOException: " << e.what() << std::endl;
+        return nullptr;
+    }
+
+    if (bytes_read_head != HEADER_LENGTH_END_POSITION)
+    {
+        if (bytes_read_head != 0)
         {
             std::cerr << "could not read frame delimiter + length" << std::endl;
         }
@@ -220,16 +302,31 @@ std::unique_ptr<uart_frame> xbee_s1::read_frame()
 
     // note: in API mode 2 (enabled with escape characters) length field doesn't account for escaped chars; checksum can be escaped
     std::vector<uint8_t> frame_tail;    // contains api identifier to checksum bytes
-    size_t bytes_read_t = serial.read(frame_tail, length + 1);    // payload + checksum
+    size_t bytes_read_tail;
 
-    if (bytes_read_t != length + 1)
+    try
     {
-        std::cerr << "could not read rest of frame (expected: " << length + 1 << ", read: " << bytes_read_t << " bytes)" << std::endl;
+        bytes_read_tail = serial.read(frame_tail, length + 1);    // payload + checksum
+    }
+    catch (const serial::PortNotOpenedException &e)
+    {
+        std::clog << "read_frame: caught PortNotOpenedException: " << e.what() << std::endl;
+        return nullptr;
+    }
+    catch (const serial::SerialException &e)
+    {
+        std::clog << "read_frame: caught SerialException: " << e.what() << std::endl;
+        return nullptr;
+    }
+
+    if (bytes_read_tail != length + 1)
+    {
+        std::cerr << "could not read rest of frame (expected: " << length + 1 << ", read: " << bytes_read_tail << " bytes)" << std::endl;
         return nullptr;
     }
 
     std::clog << "read  [" << util::get_frame_hex(frame_head) << " " << util::get_frame_hex(frame_tail) << "] ("
-        << bytes_read_h + bytes_read_t << " bytes)" << std::endl;
+        << bytes_read_head + bytes_read_tail << " bytes)" << std::endl;
     uint8_t received_checksum = frame_tail[length];
     frame_tail.resize(length);  // truncate checksum byte
     uint8_t calculated_checksum = uart_frame::compute_checksum(frame_tail);
@@ -243,16 +340,16 @@ std::unique_ptr<uart_frame> xbee_s1::read_frame()
     switch (frame_tail[API_IDENTIFIER_INDEX])
     {
         case frame_data::api_identifier::rx_packet_64:
-            return std::unique_ptr<uart_frame>(new uart_frame(frame_head[1], frame_head[2],
-                std::make_shared<rx_packet_64_frame>(frame_tail), received_checksum));
+            return std::make_shared<uart_frame>(frame_head[1], frame_head[2],
+                std::make_shared<rx_packet_64_frame>(frame_tail), received_checksum);
 
         case frame_data::api_identifier::at_command_response:
-            return std::unique_ptr<uart_frame>(new uart_frame(frame_head[1], frame_head[2],
-                std::make_shared<at_command_response_frame>(frame_tail), received_checksum));
+            return std::make_shared<uart_frame>(frame_head[1], frame_head[2],
+                std::make_shared<at_command_response_frame>(frame_tail), received_checksum);
 
         case frame_data::api_identifier::tx_status:
-            return std::unique_ptr<uart_frame>(new uart_frame(frame_head[1], frame_head[2],
-                std::make_shared<tx_status_frame>(frame_tail), received_checksum));
+            return std::make_shared<uart_frame>(frame_head[1], frame_head[2],
+                std::make_shared<tx_status_frame>(frame_tail), received_checksum);
 
         default:
             std::cerr << "invalid api identifier value" << std::endl;

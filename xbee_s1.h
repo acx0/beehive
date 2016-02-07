@@ -42,7 +42,7 @@ public:
     void write_frame(const std::vector<uint8_t> &payload);
 
     std::shared_ptr<at_command_response_frame> write_at_command_frame(std::shared_ptr<at_command_frame> command);
-    std::unique_ptr<uart_frame> read_frame();
+    std::shared_ptr<uart_frame> read_frame();
     // TODO: read_frames()
 
 private:
