@@ -4,8 +4,8 @@ const uint8_t frame_data::FRAME_ID_DISABLE_RESPONSE_FRAME = 0;
 uint8_t frame_data::next_frame_id = 1;
 std::mutex frame_data::frame_id_lock;
 
-frame_data::frame_data(uint8_t api_identifier)
-    : api_identifier(api_identifier)
+frame_data::frame_data(uint8_t api_identifier_value)
+    : api_identifier_value(api_identifier_value)
 {
 }
 

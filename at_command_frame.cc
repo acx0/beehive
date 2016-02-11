@@ -27,7 +27,7 @@ at_command_frame::operator std::vector<uint8_t>() const
 {
     std::vector<uint8_t> frame;
 
-    frame.push_back(api_identifier);
+    frame.push_back(api_identifier_value);
     frame.push_back(frame_id);
     frame.insert(frame.end(), at_command.begin(), at_command.end());
     frame.insert(frame.end(), parameter.begin(), parameter.end());

@@ -18,7 +18,7 @@ uart_frame::uart_frame(uint8_t length_msb, uint8_t length_lsb, std::shared_ptr<f
 
 uint8_t uart_frame::get_api_identifier()
 {
-    return data->api_identifier;
+    return data->api_identifier_value;
 }
 
 std::shared_ptr<frame_data> uart_frame::get_data()

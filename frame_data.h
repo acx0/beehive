@@ -12,7 +12,7 @@ public:
     // informs xbee not to reply with a status response frame
     static const uint8_t FRAME_ID_DISABLE_RESPONSE_FRAME;
 
-    const uint8_t api_identifier;
+    const uint8_t api_identifier_value;
 
     enum api_identifier : uint8_t
     {
@@ -28,7 +28,7 @@ public:
     virtual operator std::vector<uint8_t>() const = 0;
 
 protected:
-    frame_data(uint8_t api_identifier);
+    frame_data(uint8_t api_identifier_value);
 
 private:
     static uint8_t next_frame_id;

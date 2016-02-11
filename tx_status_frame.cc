@@ -26,7 +26,7 @@ tx_status_frame::operator std::vector<uint8_t>() const
 {
     std::vector<uint8_t> frame;
 
-    frame.push_back(api_identifier);
+    frame.push_back(api_identifier_value);
     frame.push_back(frame_id);
     frame.push_back(status);
 

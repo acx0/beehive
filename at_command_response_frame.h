@@ -30,7 +30,7 @@ public:
 private:
     uint8_t frame_id;
     uint8_t at_command[2];
-    uint8_t status;
+    uint8_t status_value;
     std::vector<uint8_t> value;
 };
 

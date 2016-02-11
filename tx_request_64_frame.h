@@ -24,7 +24,7 @@ public:
 private:
     uint8_t frame_id;
     uint64_t destination_address;
-    uint8_t options;
+    uint8_t options_value;
     std::vector<uint8_t> rf_data;
 };
 

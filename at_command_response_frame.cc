@@ -22,7 +22,7 @@ at_command_response_frame::at_command_response_frame(const std::vector<uint8_t> 
     frame_id = frame[1];
     at_command[0] = frame[2];
     at_command[1] = frame[3];
-    status = frame[4];
+    status_value = frame[4];
 
     if (frame.size() > MIN_FRAME_DATA_LENGTH)
     {
@@ -32,7 +32,7 @@ at_command_response_frame::at_command_response_frame(const std::vector<uint8_t> 
 
 uint8_t at_command_response_frame::get_status()
 {
-    return status;
+    return status_value;
 }
 
 const std::vector<uint8_t> &at_command_response_frame::get_value() const
@@ -44,10 +44,10 @@ at_command_response_frame::operator std::vector<uint8_t>() const
 {
     std::vector<uint8_t> frame;
 
-    frame.push_back(api_identifier);
+    frame.push_back(api_identifier_value);
     frame.push_back(frame_id);
     frame.insert(frame.end(), std::begin(at_command), std::end(at_command));
-    frame.push_back(status);
+    frame.push_back(status_value);
     frame.insert(frame.end(), value.begin(), value.end());
 
     return frame;

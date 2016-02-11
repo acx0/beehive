@@ -51,7 +51,7 @@ rx_packet_64_frame::operator std::vector<uint8_t>() const
 {
     std::vector<uint8_t> frame;
 
-    frame.push_back(api_identifier);
+    frame.push_back(api_identifier_value);
     util::pack_value_as_bytes(frame, source_address);   // pack 8 byte address as 8 single bytes
     frame.push_back(rssi);
     frame.push_back(options);
