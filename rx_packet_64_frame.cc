@@ -1,7 +1,7 @@
 #include "rx_packet_64_frame.h"
 
 // api_identifier + source_address (8 bytes) + rssi + options
-// TODO: can rf_data be empty?
+// TODO: rf_data can't be empty, xbee discards packet (double check)
 // TODO: replace this with sum of class member sizeof()s
 const size_t rx_packet_64_frame::MIN_FRAME_DATA_LENGTH = 11;
 
@@ -30,6 +30,21 @@ rx_packet_64_frame::rx_packet_64_frame(const std::vector<uint8_t> &frame)
     {
         rf_data = std::vector<uint8_t>(frame.begin() + MIN_FRAME_DATA_LENGTH, frame.end());
     }
+}
+
+uint64_t rx_packet_64_frame::get_source_address() const
+{
+    return source_address;
+}
+
+const std::vector<uint8_t> &rx_packet_64_frame::get_rf_data() const
+{
+    return rf_data;
+}
+
+bool rx_packet_64_frame::is_broadcast_frame() const
+{
+    return (options & (1 << options_bit::address_broadcast)) || (options & (1 << options_bit::pan_broadcast));
 }
 
 rx_packet_64_frame::operator std::vector<uint8_t>() const

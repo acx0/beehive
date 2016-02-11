@@ -22,6 +22,10 @@ public:
 
     rx_packet_64_frame(const std::vector<uint8_t> &frame);
 
+    uint64_t get_source_address() const;
+    const std::vector<uint8_t> &get_rf_data() const;
+    bool is_broadcast_frame() const;
+
     operator std::vector<uint8_t>() const override;
 
 private:

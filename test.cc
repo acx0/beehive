@@ -1,28 +1,48 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "at_command_frame.h"
-#include "at_command.h"
-#include "uart_frame.h"
-#include "xbee_s1.h"
+#include "frame_processor.h"
 
 int main(int argc, char *argv[])
 {
+    if (argc < 2)
+    {
+        std::cerr << "usage: " << argv[0] << " [read|write]" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    std::string op(argv[1]);
+    std::cout << "op = " << op << std::endl;
+
     try
     {
-        xbee_s1 xbee;
+        frame_processor processor;
 
-        if (!xbee.enable_api_mode())
+        if (!processor.try_initialize_hardware())
         {
             return EXIT_FAILURE;
         }
 
-        xbee.write_frame(uart_frame(std::make_shared<at_command_frame>(at_command::API_ENABLE)));
-        auto response = xbee.read_frame();
+        if (op == "read")
+        {
+            processor.run();
+        }
+
+        if (op == "write")
+        {
+            std::cout << "press enter to start send loop";
+            std::string tmp;
+            std::getline(std::cin, tmp);
+
+            while (true)
+            {
+                processor.test_write_messsage();
+            }
+        }
     }
     catch (const std::exception &e)
     {
-        std::cerr << e.what() << std::endl;
+        std::cerr << "main: caught exception: " << e.what() << std::endl;
         return EXIT_FAILURE;
     }
 

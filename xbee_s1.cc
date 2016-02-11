@@ -1,6 +1,7 @@
 #include "xbee_s1.h"
 
 const uint64_t xbee_s1::ADDRESS_UNKNOWN = 0xffffffffffffffff;
+const uint64_t xbee_s1::BROADCAST_ADDRESS = 0xffff;
 // setting timeout <= 525 seems to cause serial reads to sometimes return nothing on odroid
 const uint32_t xbee_s1::DEFAULT_TIMEOUT_MS = 700;
 const uint32_t xbee_s1::DEFAULT_GUARD_TIME_S = 1;
@@ -9,6 +10,7 @@ const uint8_t xbee_s1::HEADER_LENGTH_END_POSITION = 3;   // delimiter + 2 length
 const uint8_t xbee_s1::API_IDENTIFIER_INDEX = 0;
 const char *const xbee_s1::COMMAND_SEQUENCE = "+++";
 
+// TODO: check for exceptions when initializing serial object
 xbee_s1::xbee_s1()
     : address(ADDRESS_UNKNOWN), serial(config.port, config.baud, serial::Timeout::simpleTimeout(DEFAULT_TIMEOUT_MS))
 {
@@ -87,6 +89,11 @@ bool xbee_s1::read_ieee_source_address()
     std::cout << oss.str() << std::endl;
 
     return true;
+}
+
+uint64_t xbee_s1::get_address() const
+{
+    return address;
 }
 
 std::string xbee_s1::execute_command(const at_command &command)

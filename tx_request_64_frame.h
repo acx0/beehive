@@ -10,8 +10,6 @@
 class tx_request_64_frame : public frame_data
 {
 public:
-    static const uint64_t BROADCAST_ADDRESS;
-
     enum options : uint8_t
     {
         none = 0x00,

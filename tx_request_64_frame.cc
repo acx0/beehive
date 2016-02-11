@@ -1,7 +1,5 @@
 #include "tx_request_64_frame.h"
 
-const uint64_t tx_request_64_frame::BROADCAST_ADDRESS = 0xffff;
-
 tx_request_64_frame::tx_request_64_frame(uint64_t destination_address, const std::vector<uint8_t> &rf_data)
     : frame_data(api_identifier::tx_request_64), frame_id(get_next_frame_id()),
         destination_address(destination_address), options(options::none), rf_data(rf_data)
