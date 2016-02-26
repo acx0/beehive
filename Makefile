@@ -6,12 +6,12 @@ LDFLAGS += -lserial -pthread
 
 SRC = $(wildcard *.cc)
 OBJ = $(SRC:%.cc=%.o)
-BIN = xbee-test
+BIN = beehive
 
 $(BIN): $(OBJ)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
-# note: need to be part of dialout group to access /dev/ttyUSB0
+# note: need to be part of dialout group to access /dev/ttyUSB*
 # usage: make ARGS='<args>' test
 # TODO: figure out how to remove LD_LIBRARY_PATH prefix
 test: $(BIN)

@@ -5,15 +5,6 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
-    {
-        std::cerr << "usage: " << argv[0] << " [read|write]" << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    std::string op(argv[1]);
-    std::cout << "op = " << op << std::endl;
-
     try
     {
         frame_processor processor;
@@ -23,22 +14,7 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
-        if (op == "read")
-        {
-            processor.run();
-        }
-
-        if (op == "write")
-        {
-            std::cout << "press enter to start send loop";
-            std::string tmp;
-            std::getline(std::cin, tmp);
-
-            while (true)
-            {
-                processor.test_write_messsage();
-            }
-        }
+        processor.run();
     }
     catch (const std::exception &e)
     {

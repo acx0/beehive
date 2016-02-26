@@ -73,3 +73,75 @@ void util::sleep(unsigned int seconds)
     ::sleep(seconds);
     std::clog << "done>" << std::endl;
 }
+
+int util::create_passive_domain_socket(const std::string &name)
+{
+    std::clog << "creating passive socket: [" << name << "]" << std::endl;
+
+    int socket_fd;
+    if ((socket_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
+    {
+        perror("socket");
+        return -1;
+    }
+
+    sockaddr_un socket;
+    socket.sun_family = AF_UNIX;
+    name.copy(socket.sun_path, name.size());
+
+    std::clog << "binding socket" << std::endl;
+    socklen_t length = name.size() + sizeof(socket.sun_family);
+    if (bind(socket_fd, (sockaddr *)&socket, length) == -1)
+    {
+        perror("bind");
+        return -1;
+    }
+
+    std::clog << "marking socket as passive" << std::endl;
+    if (listen(socket_fd, SOMAXCONN) == -1)
+    {
+        perror("listen");
+        return -1;
+    }
+
+    return socket_fd;
+}
+
+int util::create_active_domain_socket(const std::string &name)
+{
+    int socket_fd;
+    if ((socket_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
+    {
+        perror("socket");
+        return -1;
+    }
+
+    sockaddr_un remote_socket;
+    remote_socket.sun_family = AF_UNIX;
+    name.copy(remote_socket.sun_path, name.size());
+    socklen_t length = name.size() + sizeof(remote_socket.sun_family);
+
+    if (connect(socket_fd, (sockaddr *)&remote_socket, length) == -1)
+    {
+        perror("connect");
+        return -1;
+    }
+
+    return socket_fd;
+}
+
+int util::accept_connection(int socket_fd)
+{
+    int request_socket_fd;
+    sockaddr_un request_socket;
+    socklen_t length = sizeof(request_socket);
+
+    std::clog << socket_fd << ": waiting for accept request" << std::endl;
+    if ((request_socket_fd = accept(socket_fd, (sockaddr *)&request_socket, &length)) == -1)
+    {
+        perror("accept");
+        return -1;
+    }
+
+    return request_socket_fd;
+}

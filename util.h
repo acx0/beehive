@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <iomanip>
+#include <ios>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -10,12 +11,19 @@
 
 #include <unistd.h>
 
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/un.h>
+
 namespace util
 {
     std::string get_escaped_string(const std::string &str);
     std::string strip_newline(const std::string &str);
     std::string get_frame_hex(const std::vector<uint8_t> &frame, bool show_prefix = false);
     void sleep(unsigned int seconds);   // TODO: use chrono?
+    int create_passive_domain_socket(const std::string &name);
+    int create_active_domain_socket(const std::string &name);
+    int accept_connection(int socket_fd);
 
     // TODO: use iterators as input instead?
     // unpack byte vector of size n into single value of width n bytes, MSB first
@@ -50,6 +58,14 @@ namespace util
             auto shift = sizeof(uint8_t) * i * 8;
             frame.push_back((value & (mask << shift)) >> shift);
         }
+    }
+
+    template <typename T>
+    std::string to_hex_string(T i)
+    {
+        std::ostringstream oss;
+        oss << "0x" << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << i;
+        return oss.str();
     }
 }
 
