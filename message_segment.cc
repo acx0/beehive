@@ -1,10 +1,10 @@
 #include "message_segment.h"
 
-// source_port + destination_port + sequence_num (2 bytes) + ack_num (2 bytes) + flags
+// source_port (2 bytes) + destination_port (2 bytes) + sequence_num (2 bytes) + ack_num (2 bytes) + flags
 // TODO: replace this with sum of class member sizeof()s
-const size_t message_segment::MIN_SEGMENT_LENGTH = 7;
+const size_t message_segment::MIN_SEGMENT_LENGTH = 9;
 
-message_segment::message_segment(uint8_t source_port, uint8_t destination_port, uint16_t sequence_num, uint16_t ack_num, uint8_t type, uint8_t flags, const std::vector<uint8_t> &message)
+message_segment::message_segment(uint16_t source_port, uint16_t destination_port, uint16_t sequence_num, uint16_t ack_num, uint8_t type, uint8_t flags, const std::vector<uint8_t> &message)
     : source_port(source_port), destination_port(destination_port), sequence_num(sequence_num), ack_num(ack_num), flags(0), message(message)
 {
     this->flags += type << 4;
@@ -19,11 +19,11 @@ message_segment::message_segment(const std::vector<uint8_t> &segment)
         std::cerr << "invalid message_segment size" << std::endl;
     }
 
-    source_port = segment[0];
-    destination_port = segment[1];
-    sequence_num = util::unpack_bytes_to_width<uint16_t>(std::vector<uint8_t>(segment.begin() + 2, segment.begin() + 4));
-    ack_num = util::unpack_bytes_to_width<uint16_t>(std::vector<uint8_t>(segment.begin() + 4, segment.begin() + 6));
-    flags = segment[6];
+    source_port = util::unpack_bytes_to_width<uint16_t>(std::vector<uint8_t>(segment.begin(), segment.begin() + 2));
+    destination_port = util::unpack_bytes_to_width<uint16_t>(std::vector<uint8_t>(segment.begin() + 2, segment.begin() + 4));
+    sequence_num = util::unpack_bytes_to_width<uint16_t>(std::vector<uint8_t>(segment.begin() + 4, segment.begin() + 6));
+    ack_num = util::unpack_bytes_to_width<uint16_t>(std::vector<uint8_t>(segment.begin() + 6, segment.begin() + 8));
+    flags = segment[8];
 
     if (segment.size() > MIN_SEGMENT_LENGTH)
     {
@@ -31,12 +31,12 @@ message_segment::message_segment(const std::vector<uint8_t> &segment)
     }
 }
 
-uint8_t message_segment::get_source_port() const
+uint16_t message_segment::get_source_port() const
 {
     return source_port;
 }
 
-uint8_t message_segment::get_destination_port() const
+uint16_t message_segment::get_destination_port() const
 {
     return destination_port;
 }
@@ -95,8 +95,8 @@ message_segment::operator std::vector<uint8_t>() const
 {
     std::vector<uint8_t> segment;
 
-    segment.push_back(source_port);
-    segment.push_back(destination_port);
+    util::pack_value_as_bytes(segment, source_port);
+    util::pack_value_as_bytes(segment, destination_port);
     util::pack_value_as_bytes(segment, sequence_num);
     util::pack_value_as_bytes(segment, ack_num);
     segment.push_back(flags);

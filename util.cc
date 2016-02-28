@@ -145,3 +145,17 @@ int util::accept_connection(int socket_fd)
 
     return request_socket_fd;
 }
+
+std::vector<std::string> util::split(const std::string &str, const std::string &separator)
+{
+    std::vector<std::string> tokens;
+    boost::char_separator<char> sep(separator.c_str());
+    boost::tokenizer<boost::char_separator<char>> tokenizer(str, sep);
+
+    for (auto i = tokenizer.begin(); i != tokenizer.end(); ++i)
+    {
+        tokens.push_back(*i);
+    }
+
+    return tokens;
+}

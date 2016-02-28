@@ -9,11 +9,13 @@
 #include <string>
 #include <vector>
 
-#include <unistd.h>
+#include <boost/tokenizer.hpp>
 
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
+
+#include <unistd.h>
 
 namespace util
 {
@@ -24,6 +26,7 @@ namespace util
     int create_passive_domain_socket(const std::string &name);
     int create_active_domain_socket(const std::string &name);
     int accept_connection(int socket_fd);
+    std::vector<std::string> split(const std::string &str, const std::string &separator);
 
     // TODO: use iterators as input instead?
     // unpack byte vector of size n into single value of width n bytes, MSB first

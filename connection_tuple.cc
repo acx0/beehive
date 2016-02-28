@@ -1,6 +1,6 @@
 #include "connection_tuple.h"
 
-connection_tuple::connection_tuple(uint64_t source_address, uint8_t source_port, uint64_t destination_address, uint8_t destination_port)
+connection_tuple::connection_tuple(uint64_t source_address, uint16_t source_port, uint64_t destination_address, uint16_t destination_port)
     : source_address(source_address), source_port(source_port), destination_address(destination_address), destination_port(destination_port)
 {
 }

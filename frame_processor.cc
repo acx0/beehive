@@ -75,7 +75,7 @@ uint32_t frame_processor::get_next_socket_suffix()
 std::string frame_processor::read_message(int socket_fd)
 {
     char buffer[MAX_MESSAGE_SIZE];
-    int bytes_read = recv(socket_fd, buffer, sizeof(buffer), 0);
+    ssize_t bytes_read = recv(socket_fd, buffer, sizeof(buffer), 0);
 
     if (bytes_read == 0)
     {
@@ -117,6 +117,7 @@ void frame_processor::frame_reader()
         {
             auto rx_packet = std::static_pointer_cast<rx_packet_64_frame>(frame->get_data());
             message_segment segment(rx_packet->get_rf_data());  // TODO: heap alloc?
+
             uint64_t destination_address = rx_packet->is_broadcast_frame()
                 ? xbee_s1::BROADCAST_ADDRESS
                 : xbee.get_address();
@@ -145,13 +146,7 @@ void frame_processor::frame_writer()
 
     while (true)
     {
-        std::unique_lock<std::mutex> lock(write_lock);
-        condition.wait(lock, [this]{ return !write_queue.empty(); });
-
-        auto frame = write_queue.front();
-        write_queue.pop();
-        lock.unlock();
-
+        auto frame = write_queue.wait_and_pop();
         xbee.write_frame(*frame);
     }
 }
@@ -179,28 +174,28 @@ void frame_processor::channel_manager()
         if (is_message(MESSAGE_LISTEN, request_message))
         {
             std::clog << "received listen request" << std::endl;
-            boost::char_separator<char> separator(MESSAGE_SEPARATOR.c_str());
-            boost::tokenizer<boost::char_separator<char>> tokens(request_message, separator);
-            uint8_t port;
+            auto tokens = util::split(request_message, MESSAGE_SEPARATOR);
 
-            if (tokens.begin() == tokens.end() || ++tokens.begin() == tokens.end())
+            if (tokens.size() != 2)
             {
                 std::clog << "invalid request" << std::endl;
                 send_message(remote_socket_fd, MESSAGE_INVALID);
                 continue;
             }
 
+            uint16_t port;
+
             try
             {
-                int port_int = std::stoi(*++tokens.begin());
-                if (!(0 <= port_int && port_int <= std::numeric_limits<uint8_t>::max()))
+                int port_int = std::stoi(tokens[1]);
+                if (!port_manager::is_valid_port(port_int))
                 {
                     std::clog << "invalid port number" << std::endl;
                     send_message(remote_socket_fd, MESSAGE_INVALID);
                     continue;
                 }
 
-                port = port_int;
+                port = static_cast<uint16_t>(port_int);
             }
             catch (const std::exception &e)
             {
@@ -209,14 +204,14 @@ void frame_processor::channel_manager()
                 continue;
             }
 
-            if (listen_ports.count(port) != 0)
+            if (!pm.try_open_listen_port(port))
             {
                 std::clog << "port in use" << std::endl;
                 send_message(remote_socket_fd, MESSAGE_USED);
                 continue;
             }
 
-            std::string socket_path = CONTROL_PATH_PREFIX + std::to_string(port);
+            std::string socket_path = CONTROL_PATH_PREFIX + "_" + std::to_string(port);
             int socket_fd = util::create_passive_domain_socket(socket_path);
             if (socket_fd == -1)
             {
@@ -225,7 +220,6 @@ void frame_processor::channel_manager()
             }
 
             std::clog << "created fd " << socket_fd << " -> " << socket_path << std::endl;
-            listen_ports.insert(port);
             std::string response = MESSAGE_OK + MESSAGE_SEPARATOR + socket_path;
             send_message(remote_socket_fd, response);
 
@@ -235,19 +229,19 @@ void frame_processor::channel_manager()
         else if (is_message(MESSAGE_CONNECT, request_message))
         {
             std::clog << "received connect request" << std::endl;
-            boost::char_separator<char> separator(MESSAGE_SEPARATOR.c_str());
-            boost::tokenizer<boost::char_separator<char>> tokens(request_message, separator);
-            uint64_t destination_address;
-            uint8_t port;
+            auto tokens = util::split(request_message, MESSAGE_SEPARATOR);
 
-            if (tokens.begin() == tokens.end() || ++tokens.begin() == tokens.end() || ++(++tokens.begin()) == tokens.end())
+            if (tokens.size() != 3)
             {
                 std::clog << "invalid request" << std::endl;
                 send_message(remote_socket_fd, MESSAGE_INVALID);
                 continue;
             }
 
-            std::istringstream iss(*++tokens.begin());
+            uint64_t destination_address;
+            uint16_t port;
+            std::istringstream iss(tokens[1]);
+
             if (!(iss >> std::hex >> destination_address))
             {
                 std::clog << "invalid destination address" << std::endl;
@@ -257,15 +251,15 @@ void frame_processor::channel_manager()
 
             try
             {
-                int port_int = std::stoi(*++(++tokens.begin()));
-                if (!(0 <= port_int && port_int <= std::numeric_limits<uint8_t>::max()))
+                int port_int = std::stoi(tokens[2]);
+                if (!port_manager::is_valid_port(port_int))
                 {
                     std::clog << "invalid port number" << std::endl;
                     send_message(remote_socket_fd, MESSAGE_INVALID);
                     continue;
                 }
 
-                port = port_int;
+                port = static_cast<uint16_t>(port_int);
             }
             catch (const std::exception &e)
             {
@@ -314,19 +308,21 @@ void frame_processor::passive_socket_manager(int socket_fd)
     }
 }
 
-void frame_processor::active_socket_manager(int socket_fd, uint64_t destination_address, uint8_t port)
+void frame_processor::active_socket_manager(int socket_fd, uint64_t destination_address, uint16_t destination_port)
 {
     std::clog << "starting active_socket_manager thread for fd " << socket_fd << " (dest: "
-        << destination_address << ", port: " << +port << ")" << std::endl;
+        << util::to_hex_string(destination_address) << ", port: " << +destination_port << ")" << std::endl;
 
-    auto message = std::vector<uint8_t> { 0xaa, 0xbb, 0xcc, 0xdd, 0xee };
-    message_segment segment(69, 80, 0, 0, message_segment::type::stream_segment, message_segment::flag::syn, message);
+
+    uint16_t source_port;
+    if (!pm.try_get_random_ephemeral_port(source_port))
+    {
+        send_message(socket_fd, MESSAGE_FAILED);    // TODO: unique error for port exhaustion ?
+        return;
+    }
+
+    message_segment segment(source_port, destination_port, 0, 0, message_segment::type::stream_segment, message_segment::flag::syn, std::vector<uint8_t>());
     uart_frame frame(std::make_shared<tx_request_64_frame>(destination_address, segment));
     auto payload = std::make_shared<std::vector<uint8_t>>(frame);
-
-    {
-        std::lock_guard<std::mutex> lock(write_lock);
-        write_queue.push(payload);
-        condition.notify_one();
-    }
+    write_queue.push(payload);
 }

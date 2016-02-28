@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <ios>
 #include <iostream>
-#include <limits>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -16,8 +15,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <boost/tokenizer.hpp>
-
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
@@ -26,7 +23,9 @@
 #include "frame_data.h"
 #include "message_segment.h"
 #include "reliable_channel.h"
+#include "port_manager.h"
 #include "rx_packet_64_frame.h"
+#include "threadsafe_blocking_queue.h"
 #include "tx_request_64_frame.h"
 #include "util.h"
 #include "xbee_s1.h"
@@ -48,7 +47,7 @@ private:
     void frame_writer();
     void channel_manager();
     void passive_socket_manager(int socket_fd);
-    void active_socket_manager(int socket_fd, uint64_t destination_address, uint8_t port);
+    void active_socket_manager(int socket_fd, uint64_t destination_address, uint16_t destination_port);
 
     static const std::string BEEHIVE_SOCKET_PATH;
     static const std::string CONTROL_PATH_PREFIX;
@@ -68,10 +67,8 @@ private:
 
     xbee_s1 xbee;
     std::unordered_map<connection_tuple, std::shared_ptr<reliable_channel>, connection_tuple_hasher> channel_map;
-    std::mutex write_lock;  // TODO: might want to factor out queue+locking code into separate class
-    std::queue<std::shared_ptr<std::vector<uint8_t>>> write_queue;
-    std::condition_variable condition;
-    std::set<uint8_t> listen_ports;
+    threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>> write_queue;
+    port_manager pm;
 };
 
 #endif
