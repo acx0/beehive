@@ -98,7 +98,7 @@ void frame_processor::send_message(int socket_fd, const std::string &message)
 
 bool frame_processor::is_message(const std::string &message_type, const std::string &request)
 {
-    return request.size() > message_type.size() && request.compare(0, message_type.size(), message_type) == 0;
+    return request.size() >= message_type.size() && request.compare(0, message_type.size(), message_type) == 0;
 }
 
 void frame_processor::frame_reader()
