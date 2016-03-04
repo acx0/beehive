@@ -53,17 +53,17 @@ void frame_processor::run()
     channel_manager.join();
 }
 
-void frame_processor::log_segment(const connection_tuple &key, const message_segment &segment)
+void frame_processor::log_segment(const connection_tuple &key, std::shared_ptr<message_segment> segment)
 {
     std::string flags(4, ' ');
 
-    flags[0] = segment.is_ack() ? 'A' : ' ';
-    flags[1] = segment.is_rst() ? 'R' : ' ';
-    flags[2] = segment.is_syn() ? 'S' : ' ';
-    flags[3] = segment.is_fin() ? 'F' : ' ';
+    flags[0] = segment->is_ack() || segment->is_synack() ? 'A' : ' ';
+    flags[1] = segment->is_rst() ? 'R' : ' ';
+    flags[2] = segment->is_syn() || segment->is_synack() ? 'S' : ' ';
+    flags[3] = segment->is_fin() ? 'F' : ' ';
 
-    std::clog << "recv  " << key.to_string() << "[" << flags << "] type(" << +segment.get_message_type() << "), msg ["
-        << util::get_frame_hex(segment.get_message()) << "] (" << segment.get_message().size() << " bytes)" << std::endl;
+    std::clog << "recv  " << key.to_string() << "[" << flags << "] type(" << +segment->get_message_type() << "), msg ["
+        << util::get_frame_hex(segment->get_message()) << "] (" << segment->get_message().size() << " bytes)" << std::endl;
 }
 
 uint32_t frame_processor::get_next_socket_suffix()

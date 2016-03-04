@@ -39,6 +39,7 @@ public:
     bool is_rst() const;
     bool is_syn() const;
     bool is_fin() const;
+    bool is_synack() const;
     const std::vector<uint8_t> &get_message() const;
 
     bool operator<(const message_segment &rhs) const;

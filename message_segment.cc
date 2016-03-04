@@ -63,22 +63,27 @@ uint8_t message_segment::get_message_flags() const
 
 bool message_segment::is_ack() const
 {
-    return flags & flag::ack;
+    return get_message_flags() == flag::ack;
 }
 
 bool message_segment::is_rst() const
 {
-    return flags & flag::rst;
+    return get_message_flags() == flag::rst;
 }
 
 bool message_segment::is_syn() const
 {
-    return flags & flag::syn;
+    return get_message_flags() == flag::syn;
 }
 
 bool message_segment::is_fin() const
 {
-    return flags & flag::fin;
+    return get_message_flags() == flag::fin;
+}
+
+bool message_segment::is_synack() const
+{
+    return get_message_flags() == (flag::syn | flag::ack);
 }
 
 const std::vector<uint8_t> &message_segment::get_message() const
