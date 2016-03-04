@@ -17,7 +17,7 @@ public:
         send_with_broadcast_pan_id = 0x04,
     };
 
-    tx_request_64_frame(uint64_t destination_address, const std::vector<uint8_t> &rf_data);
+    tx_request_64_frame(uint64_t destination_address, const std::vector<uint8_t> &rf_data, bool enable_response_frame = false);
 
     operator std::vector<uint8_t>() const override;
 

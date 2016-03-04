@@ -1,7 +1,7 @@
 #include "tx_request_64_frame.h"
 
-tx_request_64_frame::tx_request_64_frame(uint64_t destination_address, const std::vector<uint8_t> &rf_data)
-    : frame_data(api_identifier::tx_request_64), frame_id(get_next_frame_id()),
+tx_request_64_frame::tx_request_64_frame(uint64_t destination_address, const std::vector<uint8_t> &rf_data, bool enable_response_frame)
+    : frame_data(api_identifier::tx_request_64), frame_id(enable_response_frame ? get_next_frame_id() : frame_data::FRAME_ID_DISABLE_RESPONSE_FRAME),
         destination_address(destination_address), options_value(options::none), rf_data(rf_data)
 {
 }
