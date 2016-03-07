@@ -21,29 +21,13 @@ const std::string frame_processor::MESSAGE_SEPARATOR = std::string(":");
 uint32_t frame_processor::socket_suffix = 0;
 std::mutex frame_processor::socket_suffix_lock;
 
-// TODO: robust recovery
-bool frame_processor::try_initialize_hardware()
-{
-    if (!xbee.enable_api_mode())
-    {
-        return false;
-    }
-
-    if (!xbee.enable_64_bit_addressing())
-    {
-        return false;
-    }
-
-    if (!xbee.read_ieee_source_address())
-    {
-        return false;
-    }
-
-    return true;
-}
-
 void frame_processor::run()
 {
+    if (!xbee.initialize())
+    {
+        return;
+    }
+
     std::thread reader(&frame_processor::frame_reader, this);
     std::thread writer(&frame_processor::frame_writer, this);
     std::thread channel_manager(&frame_processor::channel_manager, this);

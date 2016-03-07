@@ -16,6 +16,11 @@ public:
     static const char *const SOURCE_ADDRESS_16_BIT;
     static const char *const SERIAL_NUMBER_HIGH;
     static const char *const SERIAL_NUMBER_LOW;
+    static const char *const SOFTWARE_RESET;
+    static const char *const MAC_MODE;
+    static const char *const INTERFACE_DATA_RATE;
+    static const char *const RESTORE_DEFAULTS;
+    static const char *const WRITE;
 
     static const char *const REGISTER_QUERY;
     static const char CR;

@@ -39,6 +39,4 @@ xbee_config::xbee_config()
             baud = std::stoul(value);
         }
     }
-
-    std::clog << "using port: " << port << ", baud: " << baud << std::endl;
 }

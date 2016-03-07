@@ -39,11 +39,10 @@ public:
     static const char *const COMMAND_SEQUENCE;
 
     xbee_s1();
-
-    // TODO: move setup code into single method
-    bool enable_api_mode();
-    bool enable_64_bit_addressing();
-    bool read_ieee_source_address();
+    xbee_s1(uint32_t baud);
+    bool reset_firmware_settings();
+    bool initialize();
+    bool configure_firmware_settings();
 
     uint64_t get_address() const;
     void write_frame(const std::vector<uint8_t> &payload);  // TODO: use locks for writes that ellicit a response frame - or disable responses where possible
@@ -52,7 +51,14 @@ public:
     std::shared_ptr<uart_frame> read_frame();   // TODO: use lock to read/write so that read_frame acts like an atomic op instead of 2 separate reads which could be preempted
 
 private:
-    std::string execute_command(const at_command &command);
+    bool test_at_command_mode();
+    bool enable_api_mode();
+    bool enable_64_bit_addressing();
+    bool read_ieee_source_address();
+    bool enable_strict_802_15_4_mode();
+    bool configure_baud();
+    bool write_to_non_volatile_memory();
+    std::string execute_command(const at_command &command, bool exit_command_mode = true);
     bool enter_command_mode();
     void write_string(const std::string &str);
     std::string read_line();

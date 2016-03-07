@@ -9,6 +9,11 @@ const char *const at_command::EXIT_COMMAND_MODE = "CN";
 const char *const at_command::SOURCE_ADDRESS_16_BIT = "MY";
 const char *const at_command::SERIAL_NUMBER_HIGH = "SH";
 const char *const at_command::SERIAL_NUMBER_LOW = "SL";
+const char *const at_command::SOFTWARE_RESET = "FR";
+const char *const at_command::MAC_MODE = "MM";
+const char *const at_command::INTERFACE_DATA_RATE = "BD";
+const char *const at_command::RESTORE_DEFAULTS = "RE";
+const char *const at_command::WRITE = "WR";
 
 const char *const at_command::REGISTER_QUERY = "";
 const char at_command::CR = '\r';

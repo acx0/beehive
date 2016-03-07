@@ -33,7 +33,6 @@
 class frame_processor
 {
 public:
-    bool try_initialize_hardware();
     void run();
 
 private:
