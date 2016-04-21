@@ -13,11 +13,12 @@ class port_manager
 public:
     port_manager();
 
-    static bool is_valid_port(int port_int);
+    static bool is_listen_port(int port_int);
 
     bool try_open_listen_port(uint16_t port);
     bool try_get_random_ephemeral_port(uint16_t &port);
     void release_port(uint16_t port);
+    bool is_open(uint16_t port) const;
 
 private:
     static const uint16_t MAX_LISTEN_PORT;

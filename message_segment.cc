@@ -3,6 +3,7 @@
 // source_port (2 bytes) + destination_port (2 bytes) + sequence_num (2 bytes) + ack_num (2 bytes) + flags
 // TODO: replace this with sum of class member sizeof()s
 const size_t message_segment::MIN_SEGMENT_LENGTH = 9;
+const std::vector<uint8_t> message_segment::EMPTY_PAYLOAD;
 
 message_segment::message_segment(uint16_t source_port, uint16_t destination_port, uint16_t sequence_num, uint16_t ack_num, uint8_t type, uint8_t flags, const std::vector<uint8_t> &message)
     : source_port(source_port), destination_port(destination_port), sequence_num(sequence_num), ack_num(ack_num), flags(0), message(message)
@@ -29,6 +30,21 @@ message_segment::message_segment(const std::vector<uint8_t> &segment)
     {
         message = std::vector<uint8_t>(segment.begin() + MIN_SEGMENT_LENGTH, segment.end());
     }
+}
+
+std::shared_ptr<message_segment> message_segment::create_syn(uint16_t source_port, uint16_t destination_port)
+{
+    return std::make_shared<message_segment>(source_port, destination_port, 0, 0, type::stream_segment, flag::syn, EMPTY_PAYLOAD);
+}
+
+std::shared_ptr<message_segment> message_segment::create_synack(uint16_t source_port, uint16_t destination_port)
+{
+    return std::make_shared<message_segment>(source_port, destination_port, 0, 0, type::stream_segment, flag::syn | flag::ack, EMPTY_PAYLOAD);
+}
+
+std::shared_ptr<message_segment> message_segment::create_ack(uint16_t source_port, uint16_t destination_port, uint16_t sequence_number)
+{
+    return std::make_shared<message_segment>(source_port, destination_port, sequence_number, 0, type::stream_segment, flag::ack, EMPTY_PAYLOAD);
 }
 
 uint16_t message_segment::get_source_port() const

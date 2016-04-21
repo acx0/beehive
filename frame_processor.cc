@@ -6,12 +6,12 @@
  *  - suffix added to BEEHIVE_SOCKET_PATH to make testing multiple devices on same machine easier
  */
 const std::string frame_processor::BEEHIVE_SOCKET_PATH = std::string("\0beehive0", 9);
-const std::string frame_processor::CONTROL_PATH_PREFIX = std::string("\0beehive_ctrl", 13);
 const std::string frame_processor::COMMUNICATION_PATH_PREFIX = std::string("\0beehive_comm", 13);
 const size_t frame_processor::MAX_MESSAGE_SIZE = 100;
 const std::string frame_processor::MESSAGE_LISTEN = std::string("LISTEN");
 const std::string frame_processor::MESSAGE_CONNECT = std::string("CONNECT");
 const std::string frame_processor::MESSAGE_ACCEPT = std::string("ACCEPT");
+const std::string frame_processor::MESSAGE_CLOSE = std::string("CLOSE");
 const std::string frame_processor::MESSAGE_INVALID = std::string("INVALID");
 const std::string frame_processor::MESSAGE_USED = std::string("USED");
 const std::string frame_processor::MESSAGE_FAILED = std::string("FAILED");
@@ -85,6 +85,25 @@ bool frame_processor::is_message(const std::string &message_type, const std::str
     return request.size() >= message_type.size() && request.compare(0, message_type.size(), message_type) == 0;
 }
 
+bool frame_processor::try_parse_ieee_address(const std::string &str, uint64_t &address)
+{
+    std::istringstream iss(str);
+    return static_cast<bool>(iss >> std::hex >> address);
+}
+
+bool frame_processor::try_parse_port(const std::string &str, int &port)
+{
+    try
+    {
+        port = std::stoi(str);
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        return false;
+    }
+}
+
 void frame_processor::frame_reader()
 {
     std::clog << "starting frame_reader thread" << std::endl;
@@ -100,25 +119,43 @@ void frame_processor::frame_reader()
         if (frame->get_api_identifier() == frame_data::api_identifier::rx_packet_64)
         {
             auto rx_packet = std::static_pointer_cast<rx_packet_64_frame>(frame->get_data());
-            message_segment segment(rx_packet->get_rf_data());  // TODO: heap alloc?
+            auto segment = std::make_shared<message_segment>(rx_packet->get_rf_data());
 
+            uint64_t source_address = rx_packet->get_source_address();
             uint64_t destination_address = rx_packet->is_broadcast_frame()
                 ? xbee_s1::BROADCAST_ADDRESS
                 : xbee.get_address();
 
-            connection_tuple key(rx_packet->get_source_address(), segment.get_source_port(), destination_address, segment.get_destination_port());
-            log_segment(key, segment);
+            connection_tuple connection_key(source_address, segment->get_source_port(), destination_address, segment->get_destination_port());
+            log_segment(connection_key, segment);
 
-            if (segment.get_message_type() == message_segment::type::stream_segment)
+            if (destination_address == xbee_s1::BROADCAST_ADDRESS)
             {
-                std::shared_ptr<reliable_channel> channel;
-                if (channel_map.find(key) == channel_map.end())
+            }
+            else
+            {
+                if (segment->get_message_type() == message_segment::type::stream_segment)
                 {
-                    channel_map[key] = std::make_shared<reliable_channel>();
-                }
+                    if (!pm.is_open(segment->get_destination_port()))
+                    {
+                        std::clog << "discarding frame destined for port " << +segment->get_destination_port() << std::endl;
+                        continue;
+                    }
 
-                channel = channel_map[key];
-                channel->write(segment);
+                    if (segment->is_syn())
+                    {
+                        std::thread request_handler(&frame_processor::connection_handler, this, connection_key, segment);
+                        request_handler.detach();
+                    }
+                    else
+                    {
+                        auto message_queue = segment_queue_map[connection_key];
+                        if (message_queue != nullptr)
+                        {
+                            message_queue->push(segment);
+                        }
+                    }
+                }
             }
         }
     }
@@ -153,11 +190,10 @@ void frame_processor::channel_manager()
         }
 
         std::string request_message = read_message(remote_socket_fd);
-        std::clog << "received request message: [" << request_message << "]" << std::endl;
+        std::clog << "beehive: received request message: [" << request_message << "]" << std::endl;
 
         if (is_message(MESSAGE_LISTEN, request_message))
         {
-            std::clog << "received listen request" << std::endl;
             auto tokens = util::split(request_message, MESSAGE_SEPARATOR);
 
             if (tokens.size() != 2)
@@ -167,27 +203,22 @@ void frame_processor::channel_manager()
                 continue;
             }
 
-            uint16_t port;
-
-            try
-            {
-                int port_int = std::stoi(tokens[1]);
-                if (!port_manager::is_valid_port(port_int))
-                {
-                    std::clog << "invalid port number" << std::endl;
-                    send_message(remote_socket_fd, MESSAGE_INVALID);
-                    continue;
-                }
-
-                port = static_cast<uint16_t>(port_int);
-            }
-            catch (const std::exception &e)
+            int port_int;
+            if (!try_parse_port(tokens[1], port_int))
             {
                 std::clog << "invalid port value" << std::endl;
                 send_message(remote_socket_fd, MESSAGE_INVALID);
                 continue;
             }
 
+            if (!port_manager::is_listen_port(port_int))
+            {
+                std::clog << "invalid port number" << std::endl;
+                send_message(remote_socket_fd, MESSAGE_INVALID);
+                continue;
+            }
+
+            uint16_t port = static_cast<uint16_t>(port_int);
             if (!pm.try_open_listen_port(port))
             {
                 std::clog << "port in use" << std::endl;
@@ -195,24 +226,14 @@ void frame_processor::channel_manager()
                 continue;
             }
 
-            std::string socket_path = CONTROL_PATH_PREFIX + "_" + std::to_string(port);
-            int socket_fd = util::create_passive_domain_socket(socket_path);
-            if (socket_fd == -1)
-            {
-                send_message(remote_socket_fd, MESSAGE_FAILED);
-                continue;
-            }
+            connection_requests[port] = std::make_shared<threadsafe_blocking_queue<std::pair<uint64_t, uint16_t>>>();
+            send_message(remote_socket_fd, MESSAGE_OK);
 
-            std::clog << "created fd " << socket_fd << " -> " << socket_path << std::endl;
-            std::string response = MESSAGE_OK + MESSAGE_SEPARATOR + socket_path;
-            send_message(remote_socket_fd, response);
-
-            std::thread socket_manager(&frame_processor::passive_socket_manager, this, socket_fd);
+            std::thread socket_manager(&frame_processor::passive_socket_manager, this, remote_socket_fd, port);
             socket_manager.detach();
         }
         else if (is_message(MESSAGE_CONNECT, request_message))
         {
-            std::clog << "received connect request" << std::endl;
             auto tokens = util::split(request_message, MESSAGE_SEPARATOR);
 
             if (tokens.size() != 3)
@@ -223,90 +244,172 @@ void frame_processor::channel_manager()
             }
 
             uint64_t destination_address;
-            uint16_t port;
-            std::istringstream iss(tokens[1]);
-
-            if (!(iss >> std::hex >> destination_address))
+            if (!try_parse_ieee_address(tokens[1], destination_address))
             {
                 std::clog << "invalid destination address" << std::endl;
                 send_message(remote_socket_fd, MESSAGE_INVALID);
                 continue;
             }
 
-            try
-            {
-                int port_int = std::stoi(tokens[2]);
-                if (!port_manager::is_valid_port(port_int))
-                {
-                    std::clog << "invalid port number" << std::endl;
-                    send_message(remote_socket_fd, MESSAGE_INVALID);
-                    continue;
-                }
-
-                port = static_cast<uint16_t>(port_int);
-            }
-            catch (const std::exception &e)
+            int port_int;
+            if (!try_parse_port(tokens[2], port_int))
             {
                 std::clog << "invalid port value" << std::endl;
                 send_message(remote_socket_fd, MESSAGE_INVALID);
                 continue;
             }
 
-            std::string socket_path = CONTROL_PATH_PREFIX + "_" + util::to_hex_string(destination_address) + "_"
-                + std::to_string(port) + "_" + std::to_string(get_next_socket_suffix());
-            int socket_fd = util::create_passive_domain_socket(socket_path);
-            if (socket_fd == -1)
+            if (!port_manager::is_listen_port(port_int))
             {
-                send_message(remote_socket_fd, MESSAGE_FAILED);
+                std::clog << "invalid port number" << std::endl;
+                send_message(remote_socket_fd, MESSAGE_INVALID);
                 continue;
             }
 
-            std::clog << "created fd " << socket_fd << " -> " << socket_path << std::endl;
-            std::string response = MESSAGE_OK + MESSAGE_SEPARATOR + socket_path;
-            send_message(remote_socket_fd, response);
-
-            std::thread socket_manager(&frame_processor::active_socket_manager, this, socket_fd, destination_address, port);
+            uint16_t port = static_cast<uint16_t>(port_int);
+            std::thread socket_manager(&frame_processor::active_socket_manager, this, remote_socket_fd, destination_address, port);
             socket_manager.detach();
         }
     }
 }
 
-void frame_processor::passive_socket_manager(int socket_fd)
+void frame_processor::passive_socket_manager(int socket_fd, uint16_t listen_port)
 {
-    std::clog << "starting passive_socket_manager thread for fd " << socket_fd << std::endl;
+    std::clog << "starting passive_socket_manager thread for port " << +listen_port << std::endl;
+    auto request_queue = connection_requests[listen_port];
+
     while (true)
     {
-        int request_socket_fd = util::accept_connection(socket_fd);
-        if (request_socket_fd == -1)
+        std::string request_message = read_message(socket_fd);
+        if (request_message.empty())
         {
-            continue;
+            return;
         }
 
-        std::string request_message = read_message(request_socket_fd);
-        std::clog << "received request message: [" << request_message << "]" << std::endl;
+        std::clog << +listen_port << ": received request message: [" << request_message << "]" << std::endl;
 
         if (is_message(MESSAGE_ACCEPT, request_message))
         {
-            std::clog << "received accept request" << std::endl;
+            std::clog << "waiting for client request on port " << +listen_port << std::endl;
+            auto client_info = request_queue->wait_and_pop();
+
+            uint64_t source_address = client_info.first;
+            uint16_t source_port = client_info.second;
+
+            std::clog << "received request on port " << +listen_port << " from (dest: " << util::to_hex_string(source_address) << ", port: " << +source_port << ")" << std::endl;
+            std::string communication_socket_path = COMMUNICATION_PATH_PREFIX + "/" + util::to_hex_string(source_address) + "/" + std::to_string(source_port) + "/"
+                + std::to_string(get_next_socket_suffix());
+
+            int listen_socket_fd = util::create_passive_domain_socket(communication_socket_path);
+            if (listen_socket_fd == 1)
+            {
+                std::clog << "error creating communication socket" << std::endl;
+                continue;
+            }
+
+            connection_tuple connection_key(source_address, source_port, xbee.get_address(), listen_port);
+            send_message(socket_fd, MESSAGE_OK + MESSAGE_SEPARATOR + communication_socket_path);
         }
     }
 }
 
-void frame_processor::active_socket_manager(int socket_fd, uint64_t destination_address, uint16_t destination_port)
+void frame_processor::active_socket_manager(int control_socket_fd, uint64_t destination_address, uint16_t destination_port)
 {
-    std::clog << "starting active_socket_manager thread for fd " << socket_fd << " (dest: "
+    std::clog << "starting active_socket_manager thread for fd " << control_socket_fd << " (dest: "
         << util::to_hex_string(destination_address) << ", port: " << +destination_port << ")" << std::endl;
-
 
     uint16_t source_port;
     if (!pm.try_get_random_ephemeral_port(source_port))
     {
-        send_message(socket_fd, MESSAGE_FAILED);    // TODO: unique error for port exhaustion ?
+        send_message(control_socket_fd, MESSAGE_FAILED);    // TODO: unique error for port exhaustion ?
         return;
     }
 
-    message_segment segment(source_port, destination_port, 0, 0, message_segment::type::stream_segment, message_segment::flag::syn, std::vector<uint8_t>());
-    uart_frame frame(std::make_shared<tx_request_64_frame>(destination_address, segment));
-    auto payload = std::make_shared<std::vector<uint8_t>>(frame);
-    write_queue.push(payload);
+    // note: connection_tuple created based on expected response tuple
+    connection_tuple connection_key(destination_address, destination_port, xbee.get_address(), source_port);
+    auto segment_queue = segment_queue_map[connection_key] = std::make_shared<threadsafe_blocking_queue<std::shared_ptr<message_segment>>>();
+
+    if (destination_address != xbee.get_address())
+    {
+        auto segment = message_segment::create_syn(source_port, destination_port);
+        uart_frame frame(std::make_shared<tx_request_64_frame>(destination_address, *segment));
+        write_queue.push(std::make_shared<std::vector<uint8_t>>(frame));
+
+        auto response = segment_queue->wait_and_pop();
+        if (!response->is_synack())
+        {
+            return;
+        }
+
+        segment = message_segment::create_ack(source_port, destination_port);
+        frame = uart_frame(std::make_shared<tx_request_64_frame>(destination_address, *segment));
+        write_queue.push(std::make_shared<std::vector<uint8_t>>(frame));
+    }
+
+    std::string communication_socket_path = COMMUNICATION_PATH_PREFIX + "/" + util::to_hex_string(destination_address) + "/" + std::to_string(destination_port) + "/"
+        + std::to_string(get_next_socket_suffix());
+    int listen_socket_fd = util::create_passive_domain_socket(communication_socket_path);
+    if (listen_socket_fd == 1)
+    {
+        std::clog << "error creating communication socket" << std::endl;
+        return;
+    }
+
+    send_message(control_socket_fd, MESSAGE_OK + MESSAGE_SEPARATOR + communication_socket_path);
+}
+
+void frame_processor::connection_handler(connection_tuple connection_key, std::shared_ptr<message_segment> segment)
+{
+    std::clog << "starting connection_handler thread" << std::endl;
+    auto segment_queue = segment_queue_map[connection_key] = std::make_shared<threadsafe_blocking_queue<std::shared_ptr<message_segment>>>();
+
+    auto response = message_segment::create_synack(connection_key.destination_port, connection_key.source_port);
+    uart_frame frame(std::make_shared<tx_request_64_frame>(connection_key.source_address, *response));
+    write_queue.push(std::make_shared<std::vector<uint8_t>>(frame));
+
+    auto message = segment_queue_map[connection_key]->wait_and_pop();
+    if (!message->is_ack())
+    {
+        return;
+    }
+
+    auto request_queue = connection_requests[connection_key.destination_port];
+    if (request_queue == nullptr)
+    {
+        std::clog << "request_queue is null" << std::endl;
+        return;
+    }
+
+    request_queue->push(std::make_pair(connection_key.source_address, connection_key.source_port));
+}
+
+void frame_processor::payload_read_handler(int listen_socket_fd, connection_tuple connection_key)
+{
+    std::clog << "starting payload_read_handler thread" << std::endl;
+
+    int communication_socket_fd = util::accept_connection(listen_socket_fd);
+    if (communication_socket_fd == -1)
+    {
+        std::clog << "error accepting communication connection" << std::endl;
+        return;
+    }
+
+    std::clog << "client connected to communication socket" << std::endl;
+
+    auto segment_queue = segment_queue_map[connection_key];
+    if (segment_queue == nullptr)
+    {
+        return;
+    }
+}
+
+void frame_processor::payload_write_handler(int control_socket_fd, int listen_socket_fd, connection_tuple connection_key)
+{
+    int communication_socket_fd = util::accept_connection(listen_socket_fd);
+    if (communication_socket_fd == -1)
+    {
+        std::clog << "error accepting communication connection" << std::endl;
+        return;
+    }
+
 }

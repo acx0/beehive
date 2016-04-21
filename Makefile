@@ -2,7 +2,7 @@
 CXX = clang++
 CXXFLAGS += -std=c++11 -Wall -Wextra #-Wconversion
 CPPFLAGS += -MMD -MP
-LDFLAGS += -lserial -pthread
+LDFLAGS += -lserial -lboost_system -pthread
 
 SRC = $(wildcard *.cc)
 OBJ = $(SRC:%.cc=%.o)

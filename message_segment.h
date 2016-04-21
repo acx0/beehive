@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 #include "util.h"
@@ -11,6 +12,7 @@ class message_segment
 {
 public:
     static const size_t MIN_SEGMENT_LENGTH;
+    static const std::vector<uint8_t> EMPTY_PAYLOAD;
 
     enum type : uint8_t
     {
@@ -26,8 +28,13 @@ public:
         fin = 0x8,
     };
 
+    // TODO: get rid of ack_num field? not used currently
     message_segment(uint16_t source_port, uint16_t destination_port, uint16_t sequence_num, uint16_t ack_num, uint8_t type, uint8_t flags, const std::vector<uint8_t> &message);
     message_segment(const std::vector<uint8_t> &segment);
+
+    static std::shared_ptr<message_segment> create_syn(uint16_t source_port, uint16_t destination_port);
+    static std::shared_ptr<message_segment> create_synack(uint16_t source_port, uint16_t destination_port);
+    static std::shared_ptr<message_segment> create_ack(uint16_t source_port, uint16_t destination_port, uint16_t sequence_number = 0);
 
     uint16_t get_source_port() const;
     uint16_t get_destination_port() const;

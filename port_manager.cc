@@ -8,7 +8,7 @@ port_manager::port_manager()
 {
 }
 
-bool port_manager::is_valid_port(int port_int)
+bool port_manager::is_listen_port(int port_int)
 {
     return 0 <= port_int && port_int <= MAX_EPHEMERAL_PORT;
 }
@@ -54,9 +54,23 @@ void port_manager::release_port(uint16_t port)
         std::lock_guard<std::mutex> lock(listen_access_lock);
         used_listen_ports.erase(port);
     }
-    else if (port > MAX_LISTEN_PORT)
+    else
     {
         std::lock_guard<std::mutex> lock(ephemeral_access_lock);
         used_ephemeral_ports.erase(port);
+    }
+}
+
+bool port_manager::is_open(uint16_t port) const
+{
+    if (port <= MAX_LISTEN_PORT)
+    {
+        std::lock_guard<std::mutex> lock(listen_access_lock);
+        return used_listen_ports.count(port);
+    }
+    else
+    {
+        std::lock_guard<std::mutex> lock(ephemeral_access_lock);
+        return used_ephemeral_ports.count(port);
     }
 }
