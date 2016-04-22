@@ -1,6 +1,7 @@
 #ifndef THREADSAFE_BLOCKING_QUEUE_H
 #define THREADSAFE_BLOCKING_QUEUE_H
 
+#include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <queue>
@@ -31,6 +32,23 @@ public:
         data.pop();
 
         return value;
+    }
+
+    bool timed_wait_and_pop(T &value, const std::chrono::milliseconds &timeout)
+    {
+        std::unique_lock<std::mutex> lock(access_lock);
+
+        if (condition.wait_for(lock, timeout, [this]{ return !data.empty(); }))
+        {
+            value = data.front();
+            data.pop();
+
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
 private:

@@ -309,6 +309,8 @@ void frame_processor::passive_socket_manager(int socket_fd, uint16_t listen_port
 
             connection_tuple connection_key(source_address, source_port, xbee.get_address(), listen_port);
             send_message(socket_fd, MESSAGE_OK + MESSAGE_SEPARATOR + communication_socket_path);
+            std::thread payload_read_handler(&frame_processor::payload_read_handler, this, listen_socket_fd, connection_key);
+            payload_read_handler.detach();
         }
     }
 }
@@ -356,6 +358,8 @@ void frame_processor::active_socket_manager(int control_socket_fd, uint64_t dest
     }
 
     send_message(control_socket_fd, MESSAGE_OK + MESSAGE_SEPARATOR + communication_socket_path);
+    std::thread payload_write_handler(&frame_processor::payload_write_handler, this, control_socket_fd, listen_socket_fd, connection_key);
+    payload_write_handler.detach();
 }
 
 void frame_processor::connection_handler(connection_tuple connection_key, std::shared_ptr<message_segment> segment)
@@ -401,6 +405,9 @@ void frame_processor::payload_read_handler(int listen_socket_fd, connection_tupl
     {
         return;
     }
+
+    auto channel = std::make_shared<reliable_channel<uint16_t>>(connection_key, communication_socket_fd, write_queue, segment_queue);
+    channel->start_receiving();
 }
 
 void frame_processor::payload_write_handler(int control_socket_fd, int listen_socket_fd, connection_tuple connection_key)
@@ -412,4 +419,35 @@ void frame_processor::payload_write_handler(int control_socket_fd, int listen_so
         return;
     }
 
+    std::clog << "client connected to communication socket" << std::endl;
+    if (!util::try_configure_nonblocking_receive_timeout(communication_socket_fd))
+    {
+        return;
+    }
+
+    auto segment_queue = segment_queue_map[connection_key];
+    if (segment_queue == nullptr)
+    {
+        return;
+    }
+
+    auto channel = std::make_shared<reliable_channel<uint16_t>>(connection_key, communication_socket_fd, write_queue, segment_queue);
+    std::thread reliable_sender(&reliable_channel<uint16_t>::start_sending, std::ref(*channel));
+
+    while (true)
+    {
+        std::string control_message = read_message(control_socket_fd);
+        if (control_message.empty())
+        {
+            continue;
+        }
+
+        if (is_message(MESSAGE_CLOSE, control_message))
+        {
+            channel->request_channel_close();
+            break;
+        }
+    }
+
+    reliable_sender.join();
 }

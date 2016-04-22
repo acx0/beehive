@@ -146,6 +146,15 @@ int util::accept_connection(int socket_fd)
     return request_socket_fd;
 }
 
+bool util::try_configure_nonblocking_receive_timeout(int socket_fd)
+{
+    timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 25000;
+
+    return setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != -1;
+}
+
 std::vector<std::string> util::split(const std::string &str, const std::string &separator)
 {
     std::vector<std::string> tokens;
