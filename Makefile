@@ -1,7 +1,7 @@
 # CXX = g++
 CXX = clang++
 CXXFLAGS += -std=c++11 -Wall -Wextra #-Wconversion
-CPPFLAGS += -MMD -MP
+CPPFLAGS += -MMD -MP -D LOGGING_ENABLED
 LDFLAGS += -lserial -lboost_system -pthread
 
 SRC = $(wildcard *.cc)
