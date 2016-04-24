@@ -1,9 +1,9 @@
 #include <cstdlib>
-#include <iostream>
 #include <string>
 #include <vector>
 
 #include "frame_processor.h"
+#include "logger.h"
 #include "xbee_s1.h"
 
 int main(int argc, char *argv[])
@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
             }
             else
             {
-                std::cerr << "invalid argument: " << argv[i] << std::endl;
+                LOG_ERROR("invalid argument: ", argv[i]);
                 return EXIT_FAILURE;
             }
         }
@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
                     return EXIT_SUCCESS;
                 }
 
-                std::cerr << "connection attempt at " << baud << " baud failed" << std::endl;
+                LOG_ERROR("connection attempt at ", baud, " baud failed");
             }
 
             return EXIT_FAILURE;
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
     }
     catch (const std::exception &e)
     {
-        std::cerr << "main: caught exception: " << e.what() << std::endl;
+        LOG_ERROR("main: caught exception: ", e.what());
         return EXIT_FAILURE;
     }
 

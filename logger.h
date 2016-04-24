@@ -188,13 +188,13 @@ private:
 static logger<std_log_policy> _logger;
 
 #ifdef LOGGING_ENABLED
-#define log _logger.print<severity_type::debug>
-#define log_error _logger.print<severity_type::error>
-#define log_warning _logger.print<severity_type::warning>
+#define LOG _logger.print<severity_type::debug>
+#define LOG_ERROR _logger.print<severity_type::error>
+#define LOG_WARNING _logger.print<severity_type::warning>
 #else
-#define log(...)
-#define log_error(...)
-#define log_warning(...)
+#define LOG(...)
+#define LOG_ERROR(...)
+#define LOG_WARNING(...)
 #endif
 
 #endif
