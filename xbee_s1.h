@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -15,6 +16,7 @@
 #include "at_command_frame.h"
 #include "at_command.h"
 #include "at_command_response_frame.h"
+#include "logger.h"
 #include "rx_packet_64_frame.h"
 #include "tx_status_frame.h"
 #include "uart_frame.h"
@@ -45,10 +47,10 @@ public:
     bool configure_firmware_settings();
 
     uint64_t get_address() const;
-    void write_frame(const std::vector<uint8_t> &payload);  // TODO: use locks for writes that ellicit a response frame - or disable responses where possible
-
+    void write_frame(const std::vector<uint8_t> &payload);
     std::shared_ptr<at_command_response_frame> write_at_command_frame(std::shared_ptr<at_command_frame> command);
-    std::shared_ptr<uart_frame> read_frame();   // TODO: use lock to read/write so that read_frame acts like an atomic op instead of 2 separate reads which could be preempted
+    std::shared_ptr<uart_frame> read_frame();
+    std::shared_ptr<uart_frame> write_and_read_frame(const std::vector<uint8_t> &payload);
 
 private:
     bool test_at_command_mode();
@@ -60,9 +62,15 @@ private:
     bool write_to_non_volatile_memory();
     std::string execute_command(const at_command &command, bool exit_command_mode = true);
     bool enter_command_mode();
-    void write_string(const std::string &str);
-    std::string read_line();
 
+    void unlocked_write_string(const std::string &str);
+    std::string unlocked_read_line();
+    void unlocked_write_frame(const std::vector<uint8_t> &payload);
+    std::shared_ptr<uart_frame> unlocked_read_frame();
+    std::shared_ptr<uart_frame> unlocked_write_and_read_frame(const std::vector<uint8_t> &payload);
+
+    // note: although serial library employs its own line access protection, access_lock is used to ensure multi-frame read/write methods are atomic
+    std::mutex access_lock;
     uint64_t address;
     xbee_config config;
     serial::Serial serial;
