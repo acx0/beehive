@@ -120,13 +120,13 @@ public:
         switch (severity)
         {
             case severity_type::debug:
-                log_stream << "<D> : ";
+                log_stream << "<D> | ";
                 break;
             case severity_type::warning:
-                log_stream << "<W> : ";
+                log_stream << "<W> | ";
                 break;
             case severity_type::error:
-                log_stream << "<E> : ";
+                log_stream << "<E> | ";
                 break;
         };
 
@@ -145,14 +145,16 @@ public:
 private:
     std::string get_time()
     {
-        std::string time_str;
         time_t raw_time;
-
-        time(&raw_time);
-        time_str = ctime(&raw_time);
-
-        // strip newline
-        return time_str.substr(0, time_str.size() - 1);
+        if (time(&raw_time) != static_cast<time_t>(-1))
+        {
+            std::string time_str = ctime(&raw_time);
+            return time_str.substr(0, time_str.size() - 1); // strip newline
+        }
+        else
+        {
+            return "UNKNOWN";
+        }
     }
 
     std::string get_logline_header()
