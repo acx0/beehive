@@ -63,6 +63,9 @@ bool xbee_s1::reset_firmware_settings()
 bool xbee_s1::initialize()
 {
     std::lock_guard<std::mutex> lock(access_lock);
+
+    // use two stop bits to increase success rate of frame reads/writes at higher baud
+    serial.setStopbits(serial::stopbits_two);
     return read_ieee_source_address();
 }
 
