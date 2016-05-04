@@ -113,6 +113,9 @@ void frame_processor::frame_reader()
         auto frame = xbee.read_frame();
         if (frame == nullptr)
         {
+            // note: sleep is needed to prevent read_frame from keeping access lock held
+            // TODO: explicitly schedule frame reads/writes?
+            std::this_thread::sleep_for(std::chrono::milliseconds(25));
             continue;
         }
 
