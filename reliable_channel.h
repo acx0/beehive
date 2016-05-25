@@ -28,7 +28,7 @@ template <typename TSequenceNumber>
 class reliable_channel
 {
 public:
-    reliable_channel(connection_tuple connection_key, int communication_socket_fd, threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>> &write_queue,
+    reliable_channel(connection_tuple connection_key, int communication_socket_fd, std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue,
             std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<message_segment>>> incoming_segment_queue)
         : connection_key(connection_key), communication_socket_fd(communication_socket_fd), write_queue(write_queue), incoming_segment_queue(incoming_segment_queue),
         window_base(0), next_sequence_number(0), window_size(25), sequence_number_wrapped(false), channel_close_requested(false), sending(false), fin_received(false),
@@ -88,7 +88,7 @@ private:
             retransmit_queue.push(std::make_pair(std::chrono::system_clock::now(), segment_info.second));
             auto segment = segment_buffer[segment_info.second];
             uart_frame frame(std::make_shared<tx_request_64_frame>(connection_key.source_address, *segment));
-            write_queue.push(std::make_shared<std::vector<uint8_t>>(frame));
+            write_queue->push(std::make_shared<std::vector<uint8_t>>(frame));
         }
     }
 
@@ -173,7 +173,7 @@ private:
             lock.unlock();
 
             uart_frame frame(std::make_shared<tx_request_64_frame>(connection_key.source_address, *segment));
-            write_queue.push(std::make_shared<std::vector<uint8_t>>(frame));
+            write_queue->push(std::make_shared<std::vector<uint8_t>>(frame));
         }
     }
 
@@ -241,7 +241,7 @@ private:
             {
                 auto ack = message_segment::create_ack(connection_key.destination_port, connection_key.source_port, sequence_number);
                 uart_frame frame(std::make_shared<tx_request_64_frame>(connection_key.source_address, *ack));
-                write_queue.push(std::make_shared<std::vector<uint8_t>>(frame));
+                write_queue->push(std::make_shared<std::vector<uint8_t>>(frame));
 
                 // buffer segment if we haven't seen it before
                 if (segment_buffer.count(sequence_number) == 0)
@@ -275,7 +275,7 @@ private:
             {
                 auto ack = message_segment::create_ack(connection_key.destination_port, connection_key.source_port, sequence_number);
                 uart_frame frame(std::make_shared<tx_request_64_frame>(connection_key.source_address, *ack));
-                write_queue.push(std::make_shared<std::vector<uint8_t>>(frame));
+                write_queue->push(std::make_shared<std::vector<uint8_t>>(frame));
             }
         }
     }
@@ -291,7 +291,7 @@ private:
     mutable std::mutex access_lock;
     connection_tuple connection_key;
     int communication_socket_fd;
-    threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>> &write_queue;
+    std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue;
     std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<message_segment>>> incoming_segment_queue;
 
     TSequenceNumber window_base;

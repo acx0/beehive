@@ -68,16 +68,12 @@ std::string util::get_frame_hex(const std::vector<uint8_t> &frame, bool show_pre
 
 void util::sleep(unsigned int seconds)
 {
-    std::clog << "<sleeping " << seconds << "s ... ";
-    std::clog.flush();
+    LOG("sleeping ", seconds, "s ... ");
     ::sleep(seconds);
-    std::clog << "done>" << std::endl;
 }
 
 int util::create_passive_domain_socket(const std::string &name)
 {
-    std::clog << "creating passive socket: [" << name << "]" << std::endl;
-
     int socket_fd;
     if ((socket_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
     {
@@ -85,11 +81,12 @@ int util::create_passive_domain_socket(const std::string &name)
         return -1;
     }
 
+    LOG("created passive socket: [", name, "] -> ", socket_fd);
+
     sockaddr_un socket;
     socket.sun_family = AF_UNIX;
     name.copy(socket.sun_path, name.size());
 
-    std::clog << "binding socket" << std::endl;
     socklen_t length = name.size() + sizeof(socket.sun_family);
     if (bind(socket_fd, (sockaddr *)&socket, length) == -1)
     {
@@ -97,7 +94,6 @@ int util::create_passive_domain_socket(const std::string &name)
         return -1;
     }
 
-    std::clog << "marking socket as passive" << std::endl;
     if (listen(socket_fd, SOMAXCONN) == -1)
     {
         perror("listen");
@@ -136,13 +132,14 @@ int util::accept_connection(int socket_fd)
     sockaddr_un request_socket;
     socklen_t length = sizeof(request_socket);
 
-    std::clog << socket_fd << ": waiting for accept request" << std::endl;
+    LOG(socket_fd, ": waiting for accept request");
     if ((request_socket_fd = accept(socket_fd, (sockaddr *)&request_socket, &length)) == -1)
     {
         perror("accept");
         return -1;
     }
 
+    LOG(socket_fd, ": received accept request -> ", request_socket_fd);
     return request_socket_fd;
 }
 
@@ -150,7 +147,7 @@ bool util::try_configure_nonblocking_receive_timeout(int socket_fd)
 {
     timeval tv;
     tv.tv_sec = 0;
-    tv.tv_usec = 25000;
+    tv.tv_usec = 25000;    // 25ms timeout
 
     return setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != -1;
 }

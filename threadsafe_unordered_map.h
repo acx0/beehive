@@ -15,6 +15,30 @@ public:
         return table[key];
     }
 
+    bool try_add(const K &key, V &value)
+    {
+        std::lock_guard<std::mutex> lock(access_lock);
+        if (table.count(key) > 0)
+        {
+            return false;
+        }
+
+        table[key] = value;
+        return true;
+    }
+
+    bool try_get(const K &key, V &value)
+    {
+        std::lock_guard<std::mutex> lock(access_lock);
+        if (table.count(key) > 0)
+        {
+            value = table[key];
+            return true;
+        }
+
+        return false;
+    }
+
     typename std::unordered_map<K, V, Hash>::size_type erase(const K &key)
     {
         std::lock_guard<std::mutex> lock(access_lock);

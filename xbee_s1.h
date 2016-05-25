@@ -1,6 +1,7 @@
 #ifndef XBEE_S1_H
 #define XBEE_S1_H
 
+#include <chrono>
 #include <cstdint>
 #include <exception>
 #include <iomanip>
@@ -9,6 +10,7 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "serial/serial.h"

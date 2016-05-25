@@ -18,6 +18,8 @@
 
 #include <unistd.h>
 
+#include "logger.h"
+
 namespace util
 {
     std::string get_escaped_string(const std::string &str);
