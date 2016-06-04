@@ -72,10 +72,10 @@ void util::sleep(unsigned int seconds)
     ::sleep(seconds);
 }
 
-int util::create_passive_domain_socket(const std::string &name)
+int util::create_passive_domain_socket(const std::string &name, int type)
 {
     int socket_fd;
-    if ((socket_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
+    if ((socket_fd = socket(AF_UNIX, type, 0)) == -1)
     {
         perror("socket");
         return -1;
@@ -103,10 +103,10 @@ int util::create_passive_domain_socket(const std::string &name)
     return socket_fd;
 }
 
-int util::create_active_domain_socket(const std::string &name)
+int util::create_active_domain_socket(const std::string &name, int type)
 {
     int socket_fd;
-    if ((socket_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
+    if ((socket_fd = socket(AF_UNIX, type, 0)) == -1)
     {
         perror("socket");
         return -1;

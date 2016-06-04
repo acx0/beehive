@@ -132,7 +132,7 @@ void channel_manager::passive_socket_manager(int client_socket_fd, uint16_t list
             LOG("received request on port ", +listen_port, " from (dest: ", util::to_hex_string(source_address), ", port: ", +source_port, ")");
             std::string communication_socket_path = CHANNEL_PATH_PREFIX + "/" + util::to_hex_string(source_address) + "/" + std::to_string(source_port) + "/" + std::to_string(get_next_socket_suffix());
 
-            int listen_socket_fd = util::create_passive_domain_socket(communication_socket_path);
+            int listen_socket_fd = util::create_passive_domain_socket(communication_socket_path, SOCK_STREAM);
             if (listen_socket_fd == 1)
             {
                 LOG("error creating communication socket");
@@ -190,7 +190,7 @@ void channel_manager::active_socket_manager(int control_socket_fd, uint64_t dest
     }
 
     std::string communication_socket_path = CHANNEL_PATH_PREFIX + "/" + util::to_hex_string(destination_address) + "/" + std::to_string(destination_port) + "/" + std::to_string(get_next_socket_suffix());
-    int listen_socket_fd = util::create_passive_domain_socket(communication_socket_path);
+    int listen_socket_fd = util::create_passive_domain_socket(communication_socket_path, SOCK_STREAM);
     if (listen_socket_fd == 1)
     {
         LOG_ERROR("error creating communication socket");

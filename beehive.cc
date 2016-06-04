@@ -67,7 +67,7 @@ bool beehive::try_parse_port(const std::string &str, int &port)
 void beehive::request_handler()
 {
     LOG("starting request_handler thread");
-    int listen_socket_fd = util::create_passive_domain_socket(BEEHIVE_SOCKET_PATH);
+    int listen_socket_fd = util::create_passive_domain_socket(BEEHIVE_SOCKET_PATH, SOCK_STREAM);
     if (listen_socket_fd == -1)
     {
         return;
