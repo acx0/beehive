@@ -1,7 +1,6 @@
 #ifndef THREADSAFE_SET_H
 #define THREADSAFE_SET_H
 
-#include <condition_variable>
 #include <mutex>
 #include <set>
 
@@ -42,7 +41,6 @@ public:
 private:
     mutable std::mutex access_lock;
     std::set<T> data;
-    std::condition_variable condition;
 };
 
 #endif
