@@ -3,22 +3,24 @@
 const uint64_t xbee_s1::ADDRESS_UNKNOWN = 0xffffffffffffffff;
 const uint64_t xbee_s1::BROADCAST_ADDRESS = 0xffff;
 // setting timeout <= 525 seems to cause serial reads to sometimes return nothing on odroid
-const uint32_t xbee_s1::DEFAULT_TIMEOUT_MS = 700;
+const uint32_t xbee_s1::DEFAULT_SERIAL_TIMEOUT_MS = 700;
 const uint32_t xbee_s1::DEFAULT_GUARD_TIME_S = 1;
 const uint32_t xbee_s1::DEFAULT_COMMAND_MODE_TIMEOUT_S = 10;
+const uint32_t xbee_s1::CTS_LOW_RETRIES = 100;
+const uint32_t xbee_s1::CTS_LOW_SLEEP_MS = 5;
 const uint8_t xbee_s1::HEADER_LENGTH_END_POSITION = 3;   // delimiter + 2 length bytes
 const uint8_t xbee_s1::API_IDENTIFIER_INDEX = 0;
 const char *const xbee_s1::COMMAND_SEQUENCE = "+++";
 
 // TODO: check for exceptions when initializing serial object
 xbee_s1::xbee_s1()
-    : address(ADDRESS_UNKNOWN), serial(config.port, config.baud, serial::Timeout::simpleTimeout(DEFAULT_TIMEOUT_MS))
+    : address(ADDRESS_UNKNOWN), serial(config.port, config.baud, serial::Timeout::simpleTimeout(DEFAULT_SERIAL_TIMEOUT_MS))
 {
     LOG("using port: ", config.port, ", baud: ", config.baud);
 }
 
 xbee_s1::xbee_s1(uint32_t baud)
-    : address(ADDRESS_UNKNOWN), serial(config.port, baud, serial::Timeout::simpleTimeout(DEFAULT_TIMEOUT_MS))
+    : address(ADDRESS_UNKNOWN), serial(config.port, baud, serial::Timeout::simpleTimeout(DEFAULT_SERIAL_TIMEOUT_MS))
 {
     LOG("using port: ", config.port, ", baud: ", baud);
 }
@@ -391,11 +393,28 @@ std::shared_ptr<uart_frame> xbee_s1::write_and_read_frame(const std::vector<uint
 
 void xbee_s1::unlocked_write_frame(const std::vector<uint8_t> &payload)
 {
-    size_t bytes_written;
+    size_t bytes_written = 0;
 
     try
     {
-        bytes_written = serial.write(payload);
+        util::retry([&]
+            {
+                if (serial.getCTS())
+                {
+                    bytes_written = serial.write(payload);
+                    return true;
+                }
+                else
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(CTS_LOW_SLEEP_MS));
+                    return false;
+                }
+            }, CTS_LOW_RETRIES);
+
+        if (bytes_written == 0)
+        {
+            return;
+        }
     }
     catch (const serial::PortNotOpenedException &e)
     {

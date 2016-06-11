@@ -165,3 +165,16 @@ std::vector<std::string> util::split(const std::string &str, const std::string &
 
     return tokens;
 }
+
+bool util::retry(std::function<bool()> function, uint32_t retries)
+{
+    for (uint32_t i = 0; i < retries; ++i)
+    {
+        if (function())
+        {
+            return true;
+        }
+    }
+
+    return false;
+}

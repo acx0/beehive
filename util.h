@@ -2,6 +2,7 @@
 #define UTIL_H
 
 #include <cstdint>
+#include <functional>
 #include <iomanip>
 #include <ios>
 #include <iostream>
@@ -31,6 +32,7 @@ namespace util
     int accept_connection(int socket_fd);
     bool try_configure_nonblocking_receive_timeout(int socket_fd);
     std::vector<std::string> split(const std::string &str, const std::string &separator);
+    bool retry(std::function<bool()> function, uint32_t retries);
 
     // TODO: use iterators as input instead?
     // unpack byte vector of size n into single value of width n bytes, MSB first

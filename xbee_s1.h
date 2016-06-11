@@ -35,9 +35,11 @@ class xbee_s1
 public:
     static const uint64_t ADDRESS_UNKNOWN;
     static const uint64_t BROADCAST_ADDRESS;
-    static const uint32_t DEFAULT_TIMEOUT_MS;
+    static const uint32_t DEFAULT_SERIAL_TIMEOUT_MS;
     static const uint32_t DEFAULT_GUARD_TIME_S;
     static const uint32_t DEFAULT_COMMAND_MODE_TIMEOUT_S;
+    static const uint32_t CTS_LOW_RETRIES;  // how many times to retry frame writes to serial line when CTS (clear to send) is low
+    static const uint32_t CTS_LOW_SLEEP_MS; // how long to sleep when CTS is low
     static const uint8_t HEADER_LENGTH_END_POSITION;
     static const uint8_t API_IDENTIFIER_INDEX;
     static const char *const COMMAND_SEQUENCE;
