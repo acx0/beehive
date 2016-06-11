@@ -8,6 +8,8 @@ const uint32_t xbee_s1::DEFAULT_GUARD_TIME_S = 1;
 const uint32_t xbee_s1::DEFAULT_COMMAND_MODE_TIMEOUT_S = 10;
 const uint32_t xbee_s1::CTS_LOW_RETRIES = 100;
 const uint32_t xbee_s1::CTS_LOW_SLEEP_MS = 5;
+const uint32_t xbee_s1::MAX_INVALID_FRAME_READS = 20;
+const uint32_t xbee_s1::INVALID_FRAME_READ_SLEEP_MS = 200;
 const uint8_t xbee_s1::HEADER_LENGTH_END_POSITION = 3;   // delimiter + 2 length bytes
 const uint8_t xbee_s1::API_IDENTIFIER_INDEX = 0;
 const char *const xbee_s1::COMMAND_SEQUENCE = "+++";
@@ -443,6 +445,8 @@ void xbee_s1::unlocked_write_frame(const std::vector<uint8_t> &payload)
 
 std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
 {
+    static uint32_t invalid_frame_reads = 0;
+
     // read up to length header first to determine how many more bytes to read from serial line
     std::vector<uint8_t> frame_head;    // contains start delimiter to length bytes
     size_t bytes_read_head;
@@ -479,7 +483,14 @@ std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
 
     if (frame_head[0] != uart_frame::FRAME_DELIMITER)
     {
-        LOG_ERROR("frame_head did not contain valid start delimiter");
+        ++invalid_frame_reads;
+
+        if (invalid_frame_reads >= MAX_INVALID_FRAME_READS)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(INVALID_FRAME_READ_SLEEP_MS));
+            invalid_frame_reads = 0;
+        }
+
         return nullptr;
     }
 

@@ -40,6 +40,8 @@ public:
     static const uint32_t DEFAULT_COMMAND_MODE_TIMEOUT_S;
     static const uint32_t CTS_LOW_RETRIES;  // how many times to retry frame writes to serial line when CTS (clear to send) is low
     static const uint32_t CTS_LOW_SLEEP_MS; // how long to sleep when CTS is low
+    static const uint32_t MAX_INVALID_FRAME_READS;  // TODO: haven't pinpointed why this happens, but sleeping seems to 'fix' corrupt frame reads
+    static const uint32_t INVALID_FRAME_READ_SLEEP_MS;
     static const uint8_t HEADER_LENGTH_END_POSITION;
     static const uint8_t API_IDENTIFIER_INDEX;
     static const char *const COMMAND_SEQUENCE;
