@@ -2,9 +2,11 @@
 
 const size_t beehive_message::MAX_SIZE = 100;
 const std::string beehive_message::LISTEN = std::string("LISTEN");
+const std::string beehive_message::LISTEN_DGRAM = std::string("LISTEN_DGRAM");
 const std::string beehive_message::CONNECT = std::string("CONNECT");
 const std::string beehive_message::ACCEPT = std::string("ACCEPT");
 const std::string beehive_message::CLOSE = std::string("CLOSE");
+const std::string beehive_message::SEND_DGRAM = std::string("SEND_DGRAM");
 const std::string beehive_message::INVALID = std::string("INVALID");
 const std::string beehive_message::USED = std::string("USED");
 const std::string beehive_message::FAILED = std::string("FAILED");

@@ -17,7 +17,8 @@ public:
 
     enum type : uint8_t
     {
-        stream_segment = 0
+        stream_segment = 0,
+        datagram_segment = 1
     };
 
     enum flag : uint8_t

@@ -15,6 +15,14 @@ public:
         return table[key];
     }
 
+    V &get_or_add(const K &key, V value)
+    {
+        std::lock_guard<std::mutex> lock(access_lock);
+        return table.count(key) > 0
+            ? table[key]
+            : table[key] = value;
+    }
+
     bool try_add(const K &key, V &value)
     {
         std::lock_guard<std::mutex> lock(access_lock);

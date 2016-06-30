@@ -9,7 +9,7 @@ const std::string beehive::BEEHIVE_SOCKET_PATH = std::string("\0beehive0", 9);
 const std::chrono::milliseconds beehive::FRAME_READER_SLEEP_DURATION(25);
 
 beehive::beehive()
-    : frame_writer_queue(std::make_shared<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>>()), channel_manager(frame_writer_queue)
+    : frame_writer_queue(std::make_shared<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>>()), _channel_manager(frame_writer_queue), _datagram_socket_manager(frame_writer_queue)
 {
 }
 
@@ -20,7 +20,7 @@ void beehive::run()
         return;
     }
 
-    channel_manager.set_local_address(xbee.get_address());
+    _channel_manager.set_local_address(xbee.get_address());
 
     std::thread request_handler(&beehive::request_handler, this);
     std::thread frame_processor(&beehive::frame_processor, this);
@@ -51,17 +51,30 @@ bool beehive::try_parse_ieee_address(const std::string &str, uint64_t &address)
     return static_cast<bool>(iss >> std::hex >> address);
 }
 
-bool beehive::try_parse_port(const std::string &str, int &port)
+bool beehive::try_parse_port(int client_socket_fd, const std::string &str, uint16_t &port)
 {
+    int port_int;
+
     try
     {
-        port = std::stoi(str);
-        return true;
+        port_int = std::stoi(str);
     }
     catch (const std::exception &e)
     {
+        LOG_ERROR("invalid port value");
+        beehive_message::send_message(client_socket_fd, beehive_message::INVALID);
         return false;
     }
+
+    if (!port_manager::is_listen_port(port_int))
+    {
+        LOG_ERROR("invalid port number");
+        beehive_message::send_message(client_socket_fd, beehive_message::INVALID);
+        return false;
+    }
+
+    port = static_cast<uint16_t>(port_int);
+    return true;
 }
 
 void beehive::request_handler()
@@ -83,11 +96,19 @@ void beehive::request_handler()
 
         std::string request_message = beehive_message::read_message(client_socket_fd);
         LOG("beehive: received request message: [", request_message, "]");
-
-        if (beehive_message::is_message(beehive_message::LISTEN, request_message))
+        if (request_message.empty())
         {
-            auto tokens = util::split(request_message, beehive_message::SEPARATOR);
+            continue;
+        }
 
+        auto tokens = util::split(request_message, beehive_message::SEPARATOR);
+        if (tokens.empty())
+        {
+            continue;
+        }
+
+        if (tokens[0] == beehive_message::LISTEN)
+        {
             if (tokens.size() != 2)
             {
                 LOG_ERROR("invalid request");
@@ -95,28 +116,33 @@ void beehive::request_handler()
                 continue;
             }
 
-            int port_int;
-            if (!try_parse_port(tokens[1], port_int))
+            uint16_t port;
+            if (!try_parse_port(client_socket_fd, tokens[1], port))
             {
-                LOG_ERROR("invalid port value");
-                beehive_message::send_message(client_socket_fd, beehive_message::INVALID);
                 continue;
             }
 
-            if (!port_manager::is_listen_port(port_int))
-            {
-                LOG_ERROR("invalid port number");
-                beehive_message::send_message(client_socket_fd, beehive_message::INVALID);
-                continue;
-            }
-
-            uint16_t port = static_cast<uint16_t>(port_int);
-            channel_manager.try_create_passive_socket(client_socket_fd, port);
+            _channel_manager.try_create_passive_socket(client_socket_fd, port);
         }
-        else if (beehive_message::is_message(beehive_message::CONNECT, request_message))
+        else if (tokens[0] == beehive_message::LISTEN_DGRAM)
         {
-            auto tokens = util::split(request_message, beehive_message::SEPARATOR);
+            if (tokens.size() != 2)
+            {
+                LOG_ERROR("invalid request");
+                beehive_message::send_message(client_socket_fd, beehive_message::INVALID);
+                continue;
+            }
 
+            uint16_t port;
+            if (!try_parse_port(client_socket_fd, tokens[1], port))
+            {
+                continue;
+            }
+
+            _datagram_socket_manager.try_create_passive_socket(client_socket_fd, port);
+        }
+        else if (tokens[0] == beehive_message::CONNECT)
+        {
             if (tokens.size() != 3)
             {
                 LOG_ERROR("invalid request");
@@ -132,23 +158,17 @@ void beehive::request_handler()
                 continue;
             }
 
-            int port_int;
-            if (!try_parse_port(tokens[2], port_int))
+            uint16_t port;
+            if (!try_parse_port(client_socket_fd, tokens[2], port))
             {
-                LOG_ERROR("invalid port value");
-                beehive_message::send_message(client_socket_fd, beehive_message::INVALID);
                 continue;
             }
 
-            if (!port_manager::is_listen_port(port_int))
-            {
-                LOG_ERROR("invalid port number");
-                beehive_message::send_message(client_socket_fd, beehive_message::INVALID);
-                continue;
-            }
-
-            uint16_t port = static_cast<uint16_t>(port_int);
-            channel_manager.try_create_active_socket(client_socket_fd, destination_address, port);
+            _channel_manager.try_create_active_socket(client_socket_fd, destination_address, port);
+        }
+        else if (tokens[0] == beehive_message::SEND_DGRAM)
+        {
+            _datagram_socket_manager.try_create_active_socket(client_socket_fd);
         }
     }
 }
@@ -177,9 +197,15 @@ void beehive::frame_processor()
             }
             else
             {
-                if (segment->get_message_type() == message_segment::type::stream_segment)
+                switch (segment->get_message_type())
                 {
-                    channel_manager.process_stream_segment(connection_key, segment);
+                    case message_segment::type::stream_segment:
+                        _channel_manager.process_stream_segment(connection_key, segment);
+                        break;
+
+                    case message_segment::type::datagram_segment:
+                        _datagram_socket_manager.process_segment(source_address, segment);
+                        break;
                 }
             }
         }

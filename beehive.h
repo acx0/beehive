@@ -17,6 +17,7 @@
 #include "beehive_message.h"
 #include "channel_manager.h"
 #include "connection_tuple.h"
+#include "datagram_socket_manager.h"
 #include "logger.h"
 #include "message_segment.h"
 #include "rx_packet_64_frame.h"
@@ -34,7 +35,7 @@ public:
 private:
     static void log_segment(const connection_tuple &key, std::shared_ptr<message_segment> segment);
     static bool try_parse_ieee_address(const std::string &str, uint64_t &address);
-    static bool try_parse_port(const std::string &str, int &port);
+    static bool try_parse_port(int client_socket_fd, const std::string &str, uint16_t &port);
 
     void request_handler();
     void frame_processor();
@@ -47,7 +48,8 @@ private:
     xbee_s1 xbee;
     std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> frame_writer_queue;
     threadsafe_blocking_queue<std::shared_ptr<uart_frame>> frame_processor_queue;
-    channel_manager channel_manager;
+    channel_manager _channel_manager;
+    datagram_socket_manager _datagram_socket_manager;
 };
 
 #endif

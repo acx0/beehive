@@ -17,9 +17,11 @@ public:
 
     static const size_t MAX_SIZE;
     static const std::string LISTEN;
+    static const std::string LISTEN_DGRAM;
     static const std::string CONNECT;
     static const std::string ACCEPT;
     static const std::string CLOSE;
+    static const std::string SEND_DGRAM;
     static const std::string INVALID;
     static const std::string USED;
     static const std::string FAILED;
