@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <iterator>
 #include <vector>
 
 #include "frame_data.h"

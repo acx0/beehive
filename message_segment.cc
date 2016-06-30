@@ -20,10 +20,10 @@ message_segment::message_segment(const std::vector<uint8_t> &segment)
         std::cerr << "invalid message_segment size" << std::endl;
     }
 
-    source_port = util::unpack_bytes_to_width<uint16_t>(std::vector<uint8_t>(segment.begin(), segment.begin() + 2));
-    destination_port = util::unpack_bytes_to_width<uint16_t>(std::vector<uint8_t>(segment.begin() + 2, segment.begin() + 4));
-    sequence_num = util::unpack_bytes_to_width<uint16_t>(std::vector<uint8_t>(segment.begin() + 4, segment.begin() + 6));
-    ack_num = util::unpack_bytes_to_width<uint16_t>(std::vector<uint8_t>(segment.begin() + 6, segment.begin() + 8));
+    source_port = util::unpack_bytes_to_width<uint16_t>(segment.begin());
+    destination_port = util::unpack_bytes_to_width<uint16_t>(segment.begin() + 2);
+    sequence_num = util::unpack_bytes_to_width<uint16_t>(segment.begin() + 4);
+    ack_num = util::unpack_bytes_to_width<uint16_t>(segment.begin() + 6);
     flags = segment[8];
 
     if (segment.size() > MIN_SEGMENT_LENGTH)
@@ -116,10 +116,10 @@ message_segment::operator std::vector<uint8_t>() const
 {
     std::vector<uint8_t> segment;
 
-    util::pack_value_as_bytes(segment, source_port);
-    util::pack_value_as_bytes(segment, destination_port);
-    util::pack_value_as_bytes(segment, sequence_num);
-    util::pack_value_as_bytes(segment, ack_num);
+    util::pack_value_as_bytes(std::back_inserter(segment), source_port);
+    util::pack_value_as_bytes(std::back_inserter(segment), destination_port);
+    util::pack_value_as_bytes(std::back_inserter(segment), sequence_num);
+    util::pack_value_as_bytes(std::back_inserter(segment), ack_num);
     segment.push_back(flags);
     segment.insert(segment.end(), message.begin(), message.end());
 

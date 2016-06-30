@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <ios>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -34,22 +35,17 @@ namespace util
     std::vector<std::string> split(const std::string &str, const std::string &separator);
     bool retry(std::function<bool()> function, uint32_t retries);
 
-    // TODO: use iterators as input instead?
-    // unpack byte vector of size n into single value of width n bytes, MSB first
-    template <typename T>
-    T unpack_bytes_to_width(const std::vector<uint8_t> &bytes)
+    // unpack byte vector of size n into single value of width n bytes, MSB first, n = sizeof(T)
+    template <typename T, typename Iterator>
+    T unpack_bytes_to_width(Iterator begin)
     {
-        if (bytes.size() != sizeof(T))
-        {
-            // TODO: exception
-            std::cerr << "byte vector size does not match size of template type" << std::endl;
-            return T();
-        }
-
+        auto width = sizeof(T);
         T unpacked_value = 0;
-        for (size_t i = 0; i < bytes.size(); ++i)
+
+        // TODO: why doesn't 'auto i' match with typeid(sizeof(T)), because of i's use in begin[] ?
+        for (decltype(sizeof(T)) i = 0; i < width; ++i)
         {
-            unpacked_value += static_cast<T>(bytes[i]) << (sizeof(uint8_t) * (bytes.size() - i - 1) * 8);
+            unpacked_value += static_cast<T>(begin[i]) << (sizeof(uint8_t) * (width - i - 1) * 8);
         }
 
         return unpacked_value;
@@ -57,7 +53,7 @@ namespace util
 
     // pack value of width n bytes into byte vector, MSB first
     template <typename T>
-    void pack_value_as_bytes(std::vector<uint8_t> &frame, T value)
+    void pack_value_as_bytes(std::back_insert_iterator<std::vector<uint8_t>> inserter, T value)
     {
         auto width = sizeof(T);
         T mask = 0xff;
@@ -65,7 +61,7 @@ namespace util
         for (int i = width - 1; i >= 0; --i)
         {
             auto shift = sizeof(uint8_t) * i * 8;
-            frame.push_back((value & (mask << shift)) >> shift);
+            inserter = (value & (mask << shift)) >> shift;
         }
     }
 

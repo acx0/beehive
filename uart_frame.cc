@@ -38,7 +38,7 @@ uart_frame::operator std::vector<uint8_t>() const
     frame.push_back(FRAME_DELIMITER);
     auto payload = static_cast<std::vector<uint8_t>>(*data);
     auto payload_length = static_cast<uint16_t>(payload.size());
-    util::pack_value_as_bytes(frame, payload_length);   // pack 2 byte length as 2 single bytes
+    util::pack_value_as_bytes(std::back_inserter(frame), payload_length);   // pack 2 byte length as 2 single bytes
     frame.insert(frame.end(), payload.begin(), payload.end());
     frame.push_back(compute_checksum(payload));
 

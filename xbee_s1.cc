@@ -170,7 +170,7 @@ bool xbee_s1::read_ieee_source_address()
     }
 
     address.insert(address.end(), value.begin(), value.end());
-    this->address = util::unpack_bytes_to_width<uint64_t>(address);
+    this->address = util::unpack_bytes_to_width<uint64_t>(address.begin());
 
     // TODO: do iomanip settings have to be reverted? use ostringstream for now
     std::ostringstream oss;

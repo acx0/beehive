@@ -2,6 +2,7 @@
 #define UART_FRAME_H
 
 #include <cstdint>
+#include <iterator>
 #include <memory>
 #include <numeric>
 #include <vector>

@@ -12,7 +12,7 @@ tx_request_64_frame::operator std::vector<uint8_t>() const
 
     frame.push_back(api_identifier_value);
     frame.push_back(frame_id);
-    util::pack_value_as_bytes(frame, destination_address);  // pack 8 byte address as 8 single bytes
+    util::pack_value_as_bytes(std::back_inserter(frame), destination_address);  // pack 8 byte address as 8 single bytes
     frame.push_back(options_value);
     frame.insert(frame.end(), rf_data.begin(), rf_data.end());
 

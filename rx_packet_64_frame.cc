@@ -22,7 +22,7 @@ rx_packet_64_frame::rx_packet_64_frame(const std::vector<uint8_t> &frame)
 
     // unpack 8 byte address from bytes 1-8
     auto offset = 1;
-    source_address = util::unpack_bytes_to_width<uint64_t>(std::vector<uint8_t>(frame.begin() + offset, frame.begin() + offset + 8));
+    source_address = util::unpack_bytes_to_width<uint64_t>(frame.begin() + offset);
     rssi = frame[9];
     options = frame[10];
 
@@ -52,7 +52,7 @@ rx_packet_64_frame::operator std::vector<uint8_t>() const
     std::vector<uint8_t> frame;
 
     frame.push_back(api_identifier_value);
-    util::pack_value_as_bytes(frame, source_address);   // pack 8 byte address as 8 single bytes
+    util::pack_value_as_bytes(std::back_inserter(frame), source_address);   // pack 8 byte address as 8 single bytes
     frame.push_back(rssi);
     frame.push_back(options);
     frame.insert(frame.end(), rf_data.begin(), rf_data.end());
