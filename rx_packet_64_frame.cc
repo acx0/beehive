@@ -1,9 +1,7 @@
 #include "rx_packet_64_frame.h"
 
-// api_identifier + source_address (8 bytes) + rssi + options
 // TODO: rf_data can't be empty, xbee discards packet (double check)
-// TODO: replace this with sum of class member sizeof()s
-const size_t rx_packet_64_frame::MIN_FRAME_DATA_LENGTH = 11;
+const size_t rx_packet_64_frame::MIN_FRAME_DATA_LENGTH = sizeof(api_identifier_value) + sizeof(source_address) + sizeof(rssi) + sizeof(options);
 
 rx_packet_64_frame::rx_packet_64_frame(const std::vector<uint8_t> &frame)
     : frame_data(api_identifier::rx_packet_64)

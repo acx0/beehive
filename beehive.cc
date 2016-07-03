@@ -6,7 +6,7 @@
  *  - suffix added to BEEHIVE_SOCKET_PATH to make testing multiple devices on same machine easier
  */
 const std::string beehive::BEEHIVE_SOCKET_PATH = std::string("\0beehive0", 9);
-const std::chrono::milliseconds beehive::FRAME_READER_SLEEP_DURATION(25);
+const std::chrono::milliseconds beehive::FRAME_READER_SLEEP_DURATION(25);   // TODO: test how small this can be without hogging lock
 
 beehive::beehive()
     : frame_writer_queue(std::make_shared<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>>()), _channel_manager(frame_writer_queue), _datagram_socket_manager(frame_writer_queue)
@@ -17,9 +17,11 @@ void beehive::run()
 {
     if (!xbee.initialize())
     {
-        return;
+        return;     // TODO: retries
     }
 
+    // TODO: better way to expose these state variables to all classes?
+    //  - include header with static vars?
     _channel_manager.set_local_address(xbee.get_address());
 
     std::thread request_handler(&beehive::request_handler, this);
@@ -83,9 +85,10 @@ void beehive::request_handler()
     int listen_socket_fd = util::create_passive_domain_socket(BEEHIVE_SOCKET_PATH, SOCK_STREAM);
     if (listen_socket_fd == -1)
     {
-        return;
+        return;     // TODO: retries
     }
 
+    // TODO: threadpool request handlers ?
     while (true)
     {
         int client_socket_fd = util::accept_connection(listen_socket_fd);
@@ -192,6 +195,7 @@ void beehive::frame_processor()
             connection_tuple connection_key(source_address, segment->get_source_port(), destination_address, segment->get_destination_port());
             log_segment(connection_key, segment);
 
+            // TODO: should broadcast messages be processed separately?
             if (destination_address == xbee_s1::BROADCAST_ADDRESS)
             {
             }
@@ -223,11 +227,12 @@ void beehive::frame_reader()
         {
             // note: sleep is needed to prevent xbee_s1::read_frame from keeping access lock held
             // TODO: explicitly schedule frame reads/writes?
+            // TODO: std::this_thread::yield() didn't seem to work, try multiple yields?
             std::this_thread::sleep_for(FRAME_READER_SLEEP_DURATION);
             continue;
         }
 
-        frame_processor_queue.push(frame);
+        frame_processor_queue.push(frame);  // TODO: bound this queue to a certain size?
     }
 }
 

@@ -5,6 +5,7 @@
 #include <mutex>
 #include <vector>
 
+// TODO: rename this class to indicate that it's an interface?
 // TODO: derived classes should throw exception if payload > 100bytes
 class frame_data
 {

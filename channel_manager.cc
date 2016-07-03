@@ -16,7 +16,7 @@ void channel_manager::set_local_address(uint64_t address)
 
 bool channel_manager::try_create_passive_socket(int client_socket_fd, uint16_t listen_port)
 {
-    if (!port_manager.try_open_listen_port(listen_port))
+    if (!_port_manager.try_open_listen_port(listen_port))
     {
         LOG_ERROR("port in use");
         beehive_message::send_message(client_socket_fd, beehive_message::USED);
@@ -40,7 +40,7 @@ bool channel_manager::try_create_active_socket(int client_socket_fd, uint64_t de
 
 void channel_manager::process_stream_segment(connection_tuple connection_key, std::shared_ptr<message_segment> segment)
 {
-    if (!port_manager.is_open(segment->get_destination_port()))
+    if (!_port_manager.is_open(segment->get_destination_port()))
     {
         LOG("discarding frame destined for port ", +segment->get_destination_port());
         return;
@@ -76,6 +76,7 @@ void channel_manager::incoming_connection_handler(connection_tuple connection_ke
 
     for (int i = 0; i < 5; ++i)
     {
+        // TODO: have generic write_frame method in xbee so we don't have to explicitly create uart frame every time?
         write_queue->push(std::make_shared<std::vector<uint8_t>>(frame));
         std::shared_ptr<message_segment> message;
         if (segment_queue->timed_wait_and_pop(message, std::chrono::milliseconds(500)) && message->is_ack())
@@ -85,6 +86,8 @@ void channel_manager::incoming_connection_handler(connection_tuple connection_ke
         }
     }
 
+    // TODO: known issue: as of current behavior, sender may start sending traffic while receiver (here, above) is still waiting for ack_received
+    //  - ack here not necessarily needed? since acks sent for data transfer will suffice to confirm 2 way communication
     if (!ack_received)
     {
         return;
@@ -133,7 +136,7 @@ void channel_manager::passive_socket_manager(int client_socket_fd, uint16_t list
             std::string communication_socket_path = CHANNEL_PATH_PREFIX + "/" + util::to_hex_string(source_address) + "/" + std::to_string(source_port) + "/" + std::to_string(get_next_socket_suffix());
 
             int listen_socket_fd = util::create_passive_domain_socket(communication_socket_path, SOCK_STREAM);
-            if (listen_socket_fd == 1)
+            if (listen_socket_fd == -1)
             {
                 LOG("error creating communication socket");
                 continue;
@@ -152,9 +155,9 @@ void channel_manager::active_socket_manager(int control_socket_fd, uint64_t dest
     LOG("starting active_socket_manager thread for fd ", control_socket_fd, " (dest: ", util::to_hex_string(destination_address), ", port: ", +destination_port, ")");
 
     uint16_t source_port;
-    if (!port_manager.try_get_random_ephemeral_port(source_port))
+    if (!_port_manager.try_get_random_ephemeral_port(source_port))
     {
-        beehive_message::send_message(control_socket_fd, beehive_message::FAILED);
+        beehive_message::send_message(control_socket_fd, beehive_message::FAILED);    // TODO: unique error for port exhaustion ?
         return;
     }
 
@@ -162,6 +165,8 @@ void channel_manager::active_socket_manager(int control_socket_fd, uint64_t dest
     connection_tuple connection_key(destination_address, destination_port, local_address, source_port);
     auto segment_queue = segment_queue_map[connection_key] = std::make_shared<threadsafe_blocking_queue<std::shared_ptr<message_segment>>>();
 
+    // TODO: if destination != localhost -> 3 way handshake
+    // TODO: localhost communication will need to bypass xbee hardware and just do domain socket -> domain socket forwarding?
     if (destination_address != local_address)
     {
         auto segment = message_segment::create_syn(source_port, destination_port);
@@ -181,17 +186,18 @@ void channel_manager::active_socket_manager(int control_socket_fd, uint64_t dest
 
         if (!synack_received)
         {
+            // TODO: error
             return;
         }
 
         segment = message_segment::create_ack(source_port, destination_port);
-        frame = uart_frame(std::make_shared<tx_request_64_frame>(destination_address, *segment));
+        frame = uart_frame(std::make_shared<tx_request_64_frame>(destination_address, *segment));   // TODO: hold shared_ptr to segment?
         write_queue->push(std::make_shared<std::vector<uint8_t>>(frame));
     }
 
     std::string communication_socket_path = CHANNEL_PATH_PREFIX + "/" + util::to_hex_string(destination_address) + "/" + std::to_string(destination_port) + "/" + std::to_string(get_next_socket_suffix());
     int listen_socket_fd = util::create_passive_domain_socket(communication_socket_path, SOCK_STREAM);
-    if (listen_socket_fd == 1)
+    if (listen_socket_fd == -1)
     {
         LOG_ERROR("error creating communication socket");
         return;
@@ -200,7 +206,7 @@ void channel_manager::active_socket_manager(int control_socket_fd, uint64_t dest
     beehive_message::send_message(control_socket_fd, beehive_message::OK + beehive_message::SEPARATOR + communication_socket_path);
     std::thread payload_write_handler(&channel_manager::payload_write_handler, this, control_socket_fd, listen_socket_fd, connection_key);
     payload_write_handler.join();
-    port_manager.release_port(source_port);
+    _port_manager.release_port(source_port);
 }
 
 void channel_manager::payload_read_handler(int listen_socket_fd, connection_tuple connection_key)
@@ -219,12 +225,16 @@ void channel_manager::payload_read_handler(int listen_socket_fd, connection_tupl
     auto segment_queue = segment_queue_map[connection_key];
     if (segment_queue == nullptr)
     {
+        // TODO: error msg/handling?
         LOG_ERROR("payload_read_handler: null segment_queue");
         return;
     }
 
+    // TODO: will need to keep ref to channel to signal close
     auto channel = std::make_shared<reliable_channel<uint16_t>>(connection_key, communication_socket_fd, write_queue, segment_queue);
     channel->start_receiving();
+
+    // TODO: close/cleanup communication_socket_fd
 }
 
 void channel_manager::payload_write_handler(int control_socket_fd, int listen_socket_fd, connection_tuple connection_key)
@@ -239,12 +249,14 @@ void channel_manager::payload_write_handler(int control_socket_fd, int listen_so
     LOG("client connected to communication socket");
     if (!util::try_configure_nonblocking_receive_timeout(communication_socket_fd))
     {
+        // TODO: handle
         return;
     }
 
     auto segment_queue = segment_queue_map[connection_key];
     if (segment_queue == nullptr)
     {
+        // TODO: handle
         LOG_ERROR("payload_write_handler: null segment_queue");
         return;
     }
@@ -257,15 +269,22 @@ void channel_manager::payload_write_handler(int control_socket_fd, int listen_so
         std::string control_message = beehive_message::read_message(control_socket_fd);
         if (control_message.empty())
         {
+            // TODO: should exit here?
             continue;
         }
 
         if (beehive_message::is_message(beehive_message::CLOSE, control_message))
         {
+            // TODO: send fin to receiver
+            // TODO: differentiate CLOSE vs SHUTDOWN?
+            //  - close -> finish sending payload and then send fin
+            //  - shutdown -> send immediate fin (disruptive disconnect)
+
             channel->request_channel_close();
             break;
         }
     }
 
     reliable_sender.join();
+    // TODO: close/cleanup communication_socket_fd + others
 }

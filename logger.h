@@ -38,6 +38,7 @@ class std_log_policy : public log_policy_interface
 public:
     void open_ostream(const std::string &name) override
     {
+        static_cast<void>(name);
     }
 
     void close_ostream() override
@@ -187,6 +188,7 @@ private:
     Policy *policy;
 };
 
+// static logger<file_log_policy> _logger("execution.log");
 static logger<std_log_policy> _logger;
 
 #ifdef LOGGING_ENABLED

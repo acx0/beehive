@@ -27,6 +27,7 @@ xbee_s1::xbee_s1(uint32_t baud)
     LOG("using port: ", config.port, ", baud: ", baud);
 }
 
+// TODO: rewrite this method to bootstrap into API mode and then issue these commands... at mode too flaky...
 bool xbee_s1::reset_firmware_settings()
 {
     std::lock_guard<std::mutex> lock(access_lock);
@@ -73,6 +74,7 @@ bool xbee_s1::initialize()
     return read_ieee_source_address();
 }
 
+// TODO: robust recovery -> not needed?, can instead have launcher take care of reset -> configure
 bool xbee_s1::configure_firmware_settings()
 {
     std::lock_guard<std::mutex> lock(access_lock);
@@ -201,6 +203,7 @@ bool xbee_s1::enable_strict_802_15_4_mode()
 
 bool xbee_s1::configure_baud()
 {
+    // 3 = 9600 bps
     // 7 = 115200 bps
     auto response = write_at_command_frame(std::make_shared<at_command_frame>(at_command::INTERFACE_DATA_RATE, std::vector<uint8_t>{ 0x07 }));
     if (response == nullptr)
@@ -216,7 +219,7 @@ bool xbee_s1::configure_baud()
     }
 
     // update serial object to interface at newly configured baud
-    serial.setBaudrate(115200);
+    serial.setBaudrate(115200);   // TODO: make const
     LOG("target baud successfully configured");
 
     return true;
@@ -245,6 +248,7 @@ uint64_t xbee_s1::get_address() const
     return address;
 }
 
+// TODO: rename to indicate this uses AT/"+++" mode?
 std::string xbee_s1::execute_command(const at_command &command, bool exit_command_mode)
 {
     std::string response;
@@ -443,6 +447,7 @@ void xbee_s1::unlocked_write_frame(const std::vector<uint8_t> &payload)
     LOG("write [", util::get_frame_hex(payload), "] (", bytes_written, " bytes)");
 }
 
+// TODO: factor out uart_frame parsing logic so that it can also be used in simulated_channel
 std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
 {
     static uint32_t invalid_frame_reads = 0;
@@ -534,6 +539,7 @@ std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
         return nullptr;
     }
 
+    // TODO: move this into a uart_frame ctor?
     switch (frame_tail[API_IDENTIFIER_INDEX])
     {
         case frame_data::api_identifier::rx_packet_64:

@@ -39,6 +39,9 @@ private:
 
     void request_handler();
     void frame_processor();
+    // TODO: frame reads/writes should be explicitly scheduled
+    //  - note: xbee_s1::DEFAULT_SERIAL_TIMEOUT_MS will determine the longest duration a single frame read will take, will need to take this
+    //      into consideration when trying to fairly schedule reads/writes
     void frame_reader();
     void frame_writer();
 
@@ -46,6 +49,7 @@ private:
     static const std::chrono::milliseconds FRAME_READER_SLEEP_DURATION;
 
     xbee_s1 xbee;
+    // TODO: bound frame_writer_queue to a fixed size?
     std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> frame_writer_queue;
     threadsafe_blocking_queue<std::shared_ptr<uart_frame>> frame_processor_queue;
     channel_manager _channel_manager;

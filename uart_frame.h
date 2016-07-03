@@ -19,6 +19,7 @@ public:
     static const uint8_t XOFF;
     static const uint8_t XOR_CONST;
 
+    // TODO: need ctor from vector<uint8_t> ?
     uart_frame(std::shared_ptr<frame_data> data);
     uart_frame(uint8_t length_msb, uint8_t length_lsb, std::shared_ptr<frame_data> data, uint8_t checksum);
 

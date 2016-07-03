@@ -1,10 +1,9 @@
 #include "message_segment.h"
 
-// source_port (2 bytes) + destination_port (2 bytes) + sequence_num (2 bytes) + ack_num (2 bytes) + flags
-// TODO: replace this with sum of class member sizeof()s
-const size_t message_segment::MIN_SEGMENT_LENGTH = 9;
+const size_t message_segment::MIN_SEGMENT_LENGTH = sizeof(source_port) + sizeof(destination_port) + sizeof(sequence_num) + sizeof(ack_num) + sizeof(flags);
 const std::vector<uint8_t> message_segment::EMPTY_PAYLOAD;
 
+// TODO: do we need both sequence_num and ack_num?
 message_segment::message_segment(uint16_t source_port, uint16_t destination_port, uint16_t sequence_num, uint16_t ack_num, uint8_t type, uint8_t flags, const std::vector<uint8_t> &message)
     : source_port(source_port), destination_port(destination_port), sequence_num(sequence_num), ack_num(ack_num), flags(0), message(message)
 {
@@ -21,7 +20,7 @@ message_segment::message_segment(const std::vector<uint8_t> &segment)
     }
 
     source_port = util::unpack_bytes_to_width<uint16_t>(segment.begin());
-    destination_port = util::unpack_bytes_to_width<uint16_t>(segment.begin() + 2);
+    destination_port = util::unpack_bytes_to_width<uint16_t>(segment.begin() + 2);     // TODO: make previous header offsets static const
     sequence_num = util::unpack_bytes_to_width<uint16_t>(segment.begin() + 4);
     ack_num = util::unpack_bytes_to_width<uint16_t>(segment.begin() + 6);
     flags = segment[8];

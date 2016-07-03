@@ -43,6 +43,7 @@ std::string util::strip_newline(const std::string &str)
     return oss.str();
 }
 
+// TODO: add option to enable colour with escape seqs?
 std::string util::get_frame_hex(const std::vector<uint8_t> &frame, bool show_prefix)
 {
     std::ostringstream oss;
@@ -51,7 +52,7 @@ std::string util::get_frame_hex(const std::vector<uint8_t> &frame, bool show_pre
     {
         if (show_prefix)
         {
-            oss << "0x";
+            oss << "0x";    // TODO: std::showbase ?
         }
 
         // +frame[i] promotes to type printable as number so that value isn't printed as char
@@ -90,7 +91,7 @@ int util::create_passive_domain_socket(const std::string &name, int type)
     socklen_t length = name.size() + sizeof(socket.sun_family);
     if (bind(socket_fd, (sockaddr *)&socket, length) == -1)
     {
-        perror("bind");
+        perror("bind"); // TODO: get message string and log it with LOG()
         return -1;
     }
 
@@ -143,6 +144,7 @@ int util::accept_connection(int socket_fd)
     return request_socket_fd;
 }
 
+// TODO: make timeout configurable
 bool util::try_configure_nonblocking_receive_timeout(int socket_fd)
 {
     timeval tv;
@@ -152,6 +154,7 @@ bool util::try_configure_nonblocking_receive_timeout(int socket_fd)
     return setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != -1;
 }
 
+// TODO: is this copy-elided?
 std::vector<std::string> util::split(const std::string &str, const std::string &separator)
 {
     std::vector<std::string> tokens;

@@ -9,6 +9,7 @@ template <typename K, typename V, typename Hash = std::hash<K>>
 class threadsafe_unordered_map
 {
 public:
+    // TODO: any consequence of returning V as ref here (if V is std::shared_ptr?)
     V &operator[](const K &key)
     {
         std::lock_guard<std::mutex> lock(access_lock);

@@ -7,6 +7,7 @@
 class at_command
 {
 public:
+    // TODO: convert to std::string?
     static const char *const RESPONSE_SUCCESS;
     static const char *const RESPONSE_ERROR;
 

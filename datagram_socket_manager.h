@@ -56,6 +56,7 @@ private:
     void payload_read_handler(int communication_socket_fd, std::shared_ptr<threadsafe_blocking_queue<datagram_segment>> segment_queue, std::shared_ptr<bool> running);
     void payload_write_handler(int communication_socket_fd, uint16_t source_port, std::shared_ptr<bool> running);
 
+    // TODO: defining locally for now since currently used for stack allocated buffer
     static const size_t MAX_MESSAGE_LENGTH;
     static const std::string DGRAM_PATH_PREFIX;
     static uint32_t socket_suffix;

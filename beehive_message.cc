@@ -18,6 +18,7 @@ bool beehive_message::is_message(const std::string &message_type, const std::str
     return request.size() >= message_type.size() && request.compare(0, message_type.size(), message_type) == 0;
 }
 
+// TODO: better way to indicate to caller that remote connection closed? can have out parameter and return error code
 std::string beehive_message::read_message(int socket_fd)
 {
     char buffer[MAX_SIZE];
@@ -30,7 +31,7 @@ std::string beehive_message::read_message(int socket_fd)
     }
     else if (bytes_read == -1)
     {
-        perror("recv");
+        perror("recv");     // TODO: get error string and use LOG_ERROR()
         return std::string();
     }
 

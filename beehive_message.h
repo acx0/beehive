@@ -11,7 +11,7 @@
 class beehive_message
 {
 public:
-    static bool is_message(const std::string &message_type, const std::string &request);
+    static bool is_message(const std::string &message_type, const std::string &request);    // TODO: get rid of this?
     static std::string read_message(int socket_fd);
     static void send_message(int socket_fd, const std::string &message);
 

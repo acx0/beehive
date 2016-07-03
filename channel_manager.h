@@ -43,9 +43,10 @@ private:
 
     uint64_t local_address;
     std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue;
+    // TODO: separate segment maps for payload vs control segments?, separate state/connection management into separate class?
     threadsafe_unordered_map<uint16_t, std::shared_ptr<threadsafe_blocking_queue<std::pair<uint64_t, uint16_t>>>> connection_requests;
     threadsafe_unordered_map<connection_tuple, std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<message_segment>>>, connection_tuple_hasher> segment_queue_map;
-    port_manager port_manager;
+    port_manager _port_manager;
 };
 
 #endif

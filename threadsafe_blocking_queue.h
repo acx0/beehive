@@ -6,6 +6,7 @@
 #include <mutex>
 #include <queue>
 
+// TODO: have contructor that sets default timeout for wait_and_pop ?
 template <typename T>
 class threadsafe_blocking_queue
 {
@@ -23,6 +24,7 @@ public:
         condition.notify_one();
     }
 
+    // TODO: return T or shared_ptr<T> ?
     T wait_and_pop()
     {
         std::unique_lock<std::mutex> lock(access_lock);

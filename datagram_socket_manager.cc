@@ -1,6 +1,6 @@
 #include "datagram_socket_manager.h"
 
-const size_t datagram_socket_manager::MAX_MESSAGE_LENGTH = 91;  // TODO: calculate this instead of hardcoding
+const size_t datagram_socket_manager::MAX_MESSAGE_LENGTH = 91;  // TODO: calculate this based on uart_frame::MAX_FRAME_SIZE (add this)
 const std::string datagram_socket_manager::DGRAM_PATH_PREFIX = std::string("\0beehive0_dgram", 15);
 uint32_t datagram_socket_manager::socket_suffix = 0;
 std::mutex datagram_socket_manager::socket_suffix_lock;
@@ -76,7 +76,7 @@ void datagram_socket_manager::passive_socket_manager(int control_socket_fd, int 
 
     LOG("client connected to communication socket");
 
-    auto running = std::make_shared<bool>(true);
+    auto running = std::make_shared<bool>(true);    // TODO: cleaner way to share state?
     std::thread payload_read_handler(&datagram_socket_manager::payload_read_handler, this, communication_socket_fd, segment_queue, running);
     std::thread payload_write_handler(&datagram_socket_manager::payload_write_handler, this, communication_socket_fd, listen_port, running);
 
@@ -88,6 +88,7 @@ void datagram_socket_manager::passive_socket_manager(int control_socket_fd, int 
             break;
         }
 
+        // TODO: move away from using beehive_message::is_message?
         if (beehive_message::is_message(beehive_message::CLOSE, control_message))
         {
             break;
@@ -155,6 +156,7 @@ void datagram_socket_manager::active_socket_manager(int control_socket_fd)
     payload_read_handler.join();
     payload_write_handler.join();
     destroy_socket(source_port);
+    // TODO: close listen_socket_fd
 }
 
 void datagram_socket_manager::destroy_socket(uint16_t port)
@@ -168,7 +170,7 @@ void datagram_socket_manager::payload_read_handler(int communication_socket_fd, 
     while (*running)
     {
         datagram_segment datagram;
-        if (!segment_queue->timed_wait_and_pop(datagram, std::chrono::milliseconds(250)))
+        if (!segment_queue->timed_wait_and_pop(datagram, std::chrono::milliseconds(250)))    // TODO: make timeout static, can make this larger, 1 second?
         {
             continue;
         }
@@ -178,8 +180,12 @@ void datagram_socket_manager::payload_read_handler(int communication_socket_fd, 
         util::pack_value_as_bytes(std::back_inserter(buffer), datagram.segment->get_source_port());
         buffer.insert(buffer.end(), datagram.segment->get_message().begin(), datagram.segment->get_message().end());
 
+        // TODO: will this have to be configured to be nonblocking?
+        // TODO: send() can send less than requested number of bytes, write util method to handle this
+        // TODO: can use write() instead of send if not using last arg - http://www.gnu.org/software/libc/manual/html_node/Sending-Data.html
         if (send(communication_socket_fd, buffer.data(), buffer.size(), 0) == -1)
         {
+            // TODO: check errno here or just fail completely? could have count of how many consecutive fails have occured and only then exit
         }
     }
 }
@@ -188,7 +194,12 @@ void datagram_socket_manager::payload_write_handler(int communication_socket_fd,
 {
     while (*running)
     {
-        uint8_t buffer[MAX_MESSAGE_LENGTH + sizeof(uint64_t) + sizeof(uint16_t)];
+        // TODO: rewrite as util method
+        // TODO: change all char[] to uint8_t[]
+        //      iterator version of unpack_bytes_to_width was failing because buffer was defined as char[] instead of uint8_t[], causing 0xff to be interpreted as -1 instead of 255
+        // TODO: configure nonblocking socket or use MSG_DONTWAIT?
+        // TODO: heap alloc
+        uint8_t buffer[MAX_MESSAGE_LENGTH + sizeof(uint64_t) + sizeof(uint16_t)];    // TODO: make const
         ssize_t bytes_read = recv(communication_socket_fd, buffer, sizeof(buffer), MSG_DONTWAIT);
         auto error = errno;
 
@@ -205,7 +216,7 @@ void datagram_socket_manager::payload_write_handler(int communication_socket_fd,
                 continue;
             }
 
-            perror("recv");
+            perror("recv");     // TODO: get string and use LOG_ERROR()
             break;
         }
         else if (bytes_read < sizeof(uint64_t) + sizeof(uint16_t))

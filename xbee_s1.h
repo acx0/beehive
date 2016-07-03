@@ -30,6 +30,8 @@
  *  - xbee will discard frames if destination address is not broadcast or xbee's SH + SL
  */
 
+// TODO: for tx request writes -> can check api_frame type index and if tx_request, check if frame_id > 0 ? read ack frame : don't
+
 class xbee_s1
 {
 public:

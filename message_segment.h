@@ -9,6 +9,8 @@
 
 #include "util.h"
 
+// TODO: consistency: s/sequence_num/sequence_number/
+
 class message_segment
 {
 public:
@@ -31,6 +33,7 @@ public:
     };
 
     // TODO: get rid of ack_num field? not used currently
+    // TODO: will need to have field for final_destination and treat tx_request's destination field as next-hop field to implement routing
     message_segment(uint16_t source_port, uint16_t destination_port, uint16_t sequence_num, uint16_t ack_num, uint8_t type, uint8_t flags, const std::vector<uint8_t> &message);
     message_segment(const std::vector<uint8_t> &segment);
 
