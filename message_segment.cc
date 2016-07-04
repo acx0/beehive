@@ -1,11 +1,15 @@
 #include "message_segment.h"
 
-const size_t message_segment::MIN_SEGMENT_LENGTH = sizeof(source_port) + sizeof(destination_port) + sizeof(sequence_num) + sizeof(ack_num) + sizeof(flags);
+const size_t message_segment::SOURCE_PORT_OFFSET = 0;
+const size_t message_segment::DESTINATION_PORT_OFFSET = SOURCE_PORT_OFFSET + sizeof(source_port);
+const size_t message_segment::SEQUENCE_NUM_OFFSET = DESTINATION_PORT_OFFSET + sizeof(destination_port);
+const size_t message_segment::CHECKSUM_OFFSET = SEQUENCE_NUM_OFFSET + sizeof(sequence_num);
+const size_t message_segment::FLAGS_OFFSET = CHECKSUM_OFFSET + sizeof(checksum);
+const size_t message_segment::MIN_SEGMENT_LENGTH = sizeof(source_port) + sizeof(destination_port) + sizeof(sequence_num) + sizeof(checksum) + sizeof(flags);
 const std::vector<uint8_t> message_segment::EMPTY_PAYLOAD;
 
-// TODO: do we need both sequence_num and ack_num?
-message_segment::message_segment(uint16_t source_port, uint16_t destination_port, uint16_t sequence_num, uint16_t ack_num, uint8_t type, uint8_t flags, const std::vector<uint8_t> &message)
-    : source_port(source_port), destination_port(destination_port), sequence_num(sequence_num), ack_num(ack_num), flags(0), message(message)
+message_segment::message_segment(uint16_t source_port, uint16_t destination_port, uint16_t sequence_num, uint16_t checksum, uint8_t type, uint8_t flags, const std::vector<uint8_t> &message)
+    : source_port(source_port), destination_port(destination_port), sequence_num(sequence_num), checksum(checksum), flags(0), message(message)
 {
     this->flags += type << 4;
     this->flags += flags & 0x0f;
@@ -15,15 +19,15 @@ message_segment::message_segment(const std::vector<uint8_t> &segment)
 {
     if (segment.size() < MIN_SEGMENT_LENGTH)
     {
-        // TODO: exception
-        std::cerr << "invalid message_segment size" << std::endl;
+        // TODO: dont' use ctor directly, create separate method that can indicate failure/success
+        return;
     }
 
-    source_port = util::unpack_bytes_to_width<uint16_t>(segment.begin());
-    destination_port = util::unpack_bytes_to_width<uint16_t>(segment.begin() + 2);     // TODO: make previous header offsets static const
-    sequence_num = util::unpack_bytes_to_width<uint16_t>(segment.begin() + 4);
-    ack_num = util::unpack_bytes_to_width<uint16_t>(segment.begin() + 6);
-    flags = segment[8];
+    source_port = util::unpack_bytes_to_width<uint16_t>(segment.begin() + SOURCE_PORT_OFFSET);
+    destination_port = util::unpack_bytes_to_width<uint16_t>(segment.begin() + DESTINATION_PORT_OFFSET);
+    sequence_num = util::unpack_bytes_to_width<uint16_t>(segment.begin() + SEQUENCE_NUM_OFFSET);
+    checksum = util::unpack_bytes_to_width<uint16_t>(segment.begin() + CHECKSUM_OFFSET);
+    flags = segment[FLAGS_OFFSET];
 
     if (segment.size() > MIN_SEGMENT_LENGTH)
     {
@@ -61,9 +65,14 @@ uint16_t message_segment::get_sequence_num() const
     return sequence_num;
 }
 
-uint16_t message_segment::get_ack_num() const
+uint16_t message_segment::get_checksum() const
 {
-    return ack_num;
+    return checksum;
+}
+
+uint16_t message_segment::compute_checksum() const
+{
+    return 0xffff - source_port - destination_port - sequence_num - flags - std::accumulate(message.begin(), message.end(), static_cast<uint16_t>(0));
 }
 
 uint8_t message_segment::get_message_type() const
@@ -118,7 +127,7 @@ message_segment::operator std::vector<uint8_t>() const
     util::pack_value_as_bytes(std::back_inserter(segment), source_port);
     util::pack_value_as_bytes(std::back_inserter(segment), destination_port);
     util::pack_value_as_bytes(std::back_inserter(segment), sequence_num);
-    util::pack_value_as_bytes(std::back_inserter(segment), ack_num);
+    util::pack_value_as_bytes(std::back_inserter(segment), compute_checksum());
     segment.push_back(flags);
     segment.insert(segment.end(), message.begin(), message.end());
 

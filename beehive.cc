@@ -189,6 +189,14 @@ void beehive::frame_processor()
             auto rx_packet = std::static_pointer_cast<rx_packet_64_frame>(frame->get_data());
             auto segment = std::make_shared<message_segment>(rx_packet->get_rf_data());
 
+            uint16_t received_checksum = segment->get_checksum();
+            uint16_t computed_checksum = segment->compute_checksum();
+
+            if (received_checksum != computed_checksum)
+            {
+                continue;
+            }
+
             uint64_t source_address = rx_packet->get_source_address();
             uint64_t destination_address = rx_packet->is_broadcast_frame() ? xbee_s1::BROADCAST_ADDRESS : xbee.get_address();
 
