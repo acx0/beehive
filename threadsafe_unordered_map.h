@@ -54,6 +54,12 @@ public:
         return table.erase(key);
     }
 
+    std::unordered_map<K, V, Hash> get_data() const
+    {
+        std::lock_guard<std::mutex> lock(access_lock);
+        return table;
+    }
+
 private:
     mutable std::mutex access_lock;
     std::unordered_map<K, V, Hash> table;

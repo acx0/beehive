@@ -26,7 +26,8 @@ public:
     enum type : uint8_t
     {
         stream_segment = 0,
-        datagram_segment = 1
+        datagram_segment = 1,
+        neighbour_discovery = 2,
     };
 
     enum flag : uint8_t
@@ -53,6 +54,7 @@ public:
     uint16_t compute_checksum() const;
     uint8_t get_message_type() const;
     uint8_t get_message_flags() const;
+    bool flags_empty() const;
     bool is_ack() const;
     bool is_rst() const;
     bool is_syn() const;

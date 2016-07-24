@@ -85,6 +85,11 @@ uint8_t message_segment::get_message_flags() const
     return flags & 0x0f;
 }
 
+bool message_segment::flags_empty() const
+{
+    return get_message_flags() == flag::none;
+}
+
 bool message_segment::is_ack() const
 {
     return get_message_flags() == flag::ack;

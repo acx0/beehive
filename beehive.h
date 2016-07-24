@@ -21,9 +21,17 @@
 #include "logger.h"
 #include "message_segment.h"
 #include "rx_packet_64_frame.h"
+#include "threadsafe_unordered_map.h"
+#include "tx_request_64_frame.h"
 #include "uart_frame.h"
 #include "util.h"
 #include "xbee_s1.h"
+
+struct neighbour_info
+{
+    uint64_t address;
+    std::chrono::system_clock::time_point timestamp;
+};
 
 class beehive
 {
@@ -44,6 +52,8 @@ private:
     //      into consideration when trying to fairly schedule reads/writes
     void frame_reader();
     void frame_writer();
+    void neighbour_discoverer();
+    void process_neighbour_discovery_message(uint64_t source_address, std::shared_ptr<message_segment> segment);
 
     static const std::string BEEHIVE_SOCKET_PATH;
     static const std::chrono::milliseconds FRAME_READER_SLEEP_DURATION;
@@ -54,6 +64,7 @@ private:
     threadsafe_blocking_queue<std::shared_ptr<uart_frame>> frame_processor_queue;
     channel_manager _channel_manager;
     datagram_socket_manager _datagram_socket_manager;
+    threadsafe_unordered_map<uint64_t, neighbour_info> neighbours;
 };
 
 #endif
