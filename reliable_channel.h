@@ -18,11 +18,19 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 #include "connection_tuple.h"
+#include "logger.h"
 #include "message_segment.h"
 #include "threadsafe_blocking_queue.h"
 #include "tx_request_64_frame.h"
 #include "uart_frame.h"
 #include "xbee_s1.h"
+
+// TODO: make note of sender requiring SO_RCVTIMEO set (can we check for this?) or just set it within class?
+//  - might be neater to have reader()/writer() thread logic inside this class as public members
+// TODO: make magic numbers const
+// TODO: need to send fin to close connection
+// TODO: look up fast retransmit technique
+// TODO: need to verify: when sender requests CLOSE, send FIN only after current payload is sent? currently might be stopping loop early causing retransmission queue not to be fully retransmitted
 
 template <typename TSequenceNumber>
 class reliable_channel
@@ -41,13 +49,26 @@ public:
         sending = true;
         std::thread timer(&reliable_channel::retransmit_timer, this);
 
-        while (!(segment_buffer.empty() && channel_close_requested))
+        // TODO: verify how often send loop is happening
+        while (!(segment_buffer.empty() && channel_close_requested))    // TODO: might be race condition here, try opening channel, sleep and then send small payload, might finish loop before actually tx-ing payload (or send channel_close_request before segment_buffer has a chance to be populated?)
         {
+            // TODO: small sleep here?
             send_segments_in_window();
             listen_for_acks();
         }
 
-        sending = false;
+        sending = false;    // TODO: does this need to be locked?
+
+        // TODO: send fin here, wait for ack?
+        auto fin = message_segment::create_fin(connection_key.destination_port, connection_key.source_port);   // TODO: verify might have to swap src/dest?
+        uart_frame frame(std::make_shared<tx_request_64_frame>(connection_key.source_address, *fin));
+
+        // TODO: util::repeat
+        for (int i = 0; i < 10; ++i)
+        {
+            write_queue->push(std::make_shared<std::vector<uint8_t>>(frame));
+        }
+
         timer.join();
     }
 
@@ -61,14 +82,23 @@ public:
         channel_close_requested = true;
     }
 
+    // TODO: needed? need way for sender to indicate payload channel has closed as well as receiver to receive fin and notify application layer
+    //  -> will also need to send fin from receiver -> sender (when?)
+    void received_fin()
+    {
+        fin_received = true;
+    }
+
 private:
     void retransmit_timed_out_unacked_segments()
     {
         std::lock_guard<std::mutex> lock(access_lock);
         auto now = std::chrono::system_clock::now();
 
-        while (!retransmit_queue.empty())
+        // TODO: re-write retransmit_queue to be a map, when ack is received, remove segment from it, will speed up channel teardown
+        while (!retransmit_queue.empty())   // TODO: while (... && sending), no need to continue re-tx once tx complete
         {
+            // TODO: make aliases vars instead of using .first, .second ?
             std::pair<std::chrono::system_clock::time_point, TSequenceNumber> segment_info = retransmit_queue.top();
             auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(now - segment_info.first);
 
@@ -105,10 +135,12 @@ private:
 
     void retransmit_timer()
     {
-        boost::asio::io_service io;
+        boost::asio::io_service io;     // TODO: can same io_service be used by multiple deadline_timers?
         boost::asio::deadline_timer timer(io, boost::posix_time::milliseconds(retransmission_timeout_int_ms));
         timer.async_wait(boost::bind(&reliable_channel::retransmitter, this, boost::asio::placeholders::error, &timer));
         io.run();
+
+        // TODO: need to prevent this thread from exiting? (no?) or keep ref to io_service to stop it/cleanup?
     }
 
     bool in_window(TSequenceNumber sequence_number) const
@@ -122,6 +154,9 @@ private:
         auto previous_window_base = static_cast<TSequenceNumber>(window_base - window_size);
         TSequenceNumber upper = static_cast<TSequenceNumber>(previous_window_base + window_size - 1);
         return ((previous_window_base < upper && (previous_window_base <= sequence_number && sequence_number <= upper)) || (upper < previous_window_base && (sequence_number <= upper || previous_window_base <= sequence_number)));
+
+        // TODO: can factor out above logic so this method just invokes something like:
+        // return in_window(static_cast<TSequenceNumber>(window_base - window_size), window_size, sequence_number);
     }
 
     // segment_buffer is used to hold sent + un-ACK'd segments
@@ -132,12 +167,13 @@ private:
         // send as many segments as window size allows
         while (in_window(next_sequence_number))
         {
-            uint8_t buffer[91];
+            uint8_t buffer[91]; // TODO: make const value in message_segment
             ssize_t bytes_read = recv(communication_socket_fd, buffer, sizeof(buffer), 0);
             auto error = errno;
 
             if (bytes_read == 0)
             {
+                // TODO: have flag here, if this occurs, tear down channel ?
                 sending = false;
                 break;
             }
@@ -172,11 +208,14 @@ private:
             sent_segments = true;
             lock.unlock();
 
+            // TODO: save entire frame in buffer?
             uart_frame frame(std::make_shared<tx_request_64_frame>(connection_key.source_address, *segment));
             write_queue->push(std::make_shared<std::vector<uint8_t>>(frame));
         }
     }
 
+    // TODO: this is called by methods that already aqcuired lock
+    //      - have way to indicate whether methods acquire lock vs don't?
     // tries to advance window_base to un-ACK'd segment with smallest sequence number (accounting for wraparound)
     void try_advance_window_base()
     {
@@ -211,7 +250,7 @@ private:
         std::shared_ptr<message_segment> segment;
 
         // listen for ACKs (until failure)
-        while (incoming_segment_queue->timed_wait_and_pop(segment, segment_queue_read_timeout))
+        while (incoming_segment_queue->timed_wait_and_pop(segment, segment_queue_read_timeout))     // TODO: verify using reference to shared_ptr is okay
         {
             if (in_window(segment->get_sequence_num()))
             {
@@ -226,16 +265,28 @@ private:
         }
     }
 
+    // TODO: locking needed in receiver? nothing else modifying segment_buffer, so not needed for now
+    //      - should lock all access to segment_buffer? - easier to refactor it to threadsafe_map?
     void receive_segments_in_window()
     {
-        while (!fin_received)
+        while (!fin_received)   // TODO: what other conditions should signal stop?
         {
             std::shared_ptr<message_segment> segment;
             if (!incoming_segment_queue->timed_wait_and_pop(segment, segment_queue_read_timeout))
             {
+                // TODO: try reduce amount of busy wait?
                 continue;
             }
 
+            // TODO: handle fin packets here, will be written to same channel as payload bits -> separate channels?
+            if (segment->is_fin())
+            {
+                // TODO: can just break here
+                fin_received = true;        // TODO: factor out code that reads writes to domain socket so if there are still frames that haven't been written to domain socket after fin is received, we can finish transfering them
+                continue;
+            }
+
+            // TODO: verify: next_sequence_number not used in receiver code?
             auto sequence_number = segment->get_sequence_num();
             if (in_window(sequence_number))
             {
@@ -249,6 +300,8 @@ private:
                     segment_buffer[sequence_number] = segment;
                 }
 
+                // TODO: could buffer these and send as chunk?
+                //  -> will be writing to domain socket, will buffering before sending make a difference?
                 // send segments to application layer
                 while (segment_buffer.count(window_base) != 0)
                 {
@@ -256,12 +309,14 @@ private:
                     size_t bytes_left = payload.size();
                     size_t payload_bytes_sent = 0;
 
+                    // TODO: factor out partial send logic into util method?
                     while (payload_bytes_sent < bytes_left)
                     {
                         ssize_t bytes_sent = send(communication_socket_fd, payload.data() + payload_bytes_sent, bytes_left, 0);
                         if (bytes_sent == -1)
                         {
-                            return;
+                            // TODO: error report
+                            return;     // TODO: how to handle?
                         }
 
                         payload_bytes_sent += bytes_sent;
@@ -273,6 +328,9 @@ private:
             }
             else if (in_previous_window(sequence_number))
             {
+                // TODO: Kurose excplitily defines this range, other source says to ack
+                // 'anything outside window' ... will both work?
+
                 auto ack = message_segment::create_ack(connection_key.destination_port, connection_key.source_port, sequence_number);
                 uart_frame frame(std::make_shared<tx_request_64_frame>(connection_key.source_address, *ack));
                 write_queue->push(std::make_shared<std::vector<uint8_t>>(frame));
@@ -291,7 +349,7 @@ private:
     mutable std::mutex access_lock;
     connection_tuple connection_key;
     int communication_socket_fd;
-    std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue;
+    std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue;  // TODO: outbound_frame_queue ?
     std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<message_segment>>> incoming_segment_queue;
 
     TSequenceNumber window_base;
@@ -303,12 +361,12 @@ private:
     bool sending;
     bool fin_received;
 
-    int retransmission_timeout_int_ms;
+    int retransmission_timeout_int_ms;  // TODO: type?
     std::chrono::milliseconds retransmission_timeout;
-    std::chrono::milliseconds segment_queue_read_timeout;
+    std::chrono::milliseconds segment_queue_read_timeout;  // TODO: make static
 
     std::map<TSequenceNumber, std::shared_ptr<message_segment>> segment_buffer;
-    std::priority_queue<std::pair<std::chrono::system_clock::time_point, TSequenceNumber>, std::vector<std::pair<std::chrono::system_clock::time_point, TSequenceNumber>>, timestamp_compare> retransmit_queue;
+    std::priority_queue<std::pair<std::chrono::system_clock::time_point, TSequenceNumber>, std::vector<std::pair<std::chrono::system_clock::time_point, TSequenceNumber>>, timestamp_compare> retransmit_queue; // TODO: rewrite to use map?
 };
 
 #endif

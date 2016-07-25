@@ -46,6 +46,7 @@ public:
     static std::shared_ptr<message_segment> create_syn(uint16_t source_port, uint16_t destination_port);
     static std::shared_ptr<message_segment> create_synack(uint16_t source_port, uint16_t destination_port);
     static std::shared_ptr<message_segment> create_ack(uint16_t source_port, uint16_t destination_port, uint16_t sequence_number = 0);
+    static std::shared_ptr<message_segment> create_fin(uint16_t source_port, uint16_t destination_port);
 
     uint16_t get_source_port() const;
     uint16_t get_destination_port() const;

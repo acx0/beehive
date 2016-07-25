@@ -25,15 +25,6 @@
 
 struct datagram_segment
 {
-    datagram_segment()
-    {
-    }
-
-    datagram_segment(uint64_t source_address, std::shared_ptr<message_segment> segment)
-        : source_address(source_address), segment(segment)
-    {
-    }
-
     uint64_t source_address;
     std::shared_ptr<message_segment> segment;
 };

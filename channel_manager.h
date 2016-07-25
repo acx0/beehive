@@ -18,12 +18,14 @@
 #include "tx_request_64_frame.h"
 #include "uart_frame.h"
 
+// TODO: clean up domain socket fds
 class channel_manager
 {
 public:
     channel_manager(std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue);
 
     void set_local_address(uint64_t address);
+    // TODO: no point of returning bool here?
     bool try_create_passive_socket(int client_socket_fd, uint16_t listen_port);
     bool try_create_active_socket(int client_socket_fd, uint64_t destination_address, uint16_t destination_port);
     void process_stream_segment(connection_tuple connection_key, std::shared_ptr<message_segment> segment);
@@ -32,8 +34,9 @@ private:
     static uint32_t get_next_socket_suffix();
 
     void incoming_connection_handler(connection_tuple connection_key, std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<message_segment>>> segment_queue);
-    void passive_socket_manager(int socket_fd, uint16_t listen_port);
-    void active_socket_manager(int socket_fd, uint64_t destination_address, uint16_t destination_port);
+    // TODO: difference between client_socket_fd and control_socket_fd? same?
+    void passive_socket_manager(int client_socket_fd, uint16_t listen_port);
+    void active_socket_manager(int control_socket_fd, uint64_t destination_address, uint16_t destination_port);
     void payload_read_handler(int listen_socket_fd, connection_tuple connection_key);
     void payload_write_handler(int control_socket_fd, int listen_socket_fd, connection_tuple connection_key);
 

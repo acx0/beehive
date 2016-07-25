@@ -50,6 +50,11 @@ std::shared_ptr<message_segment> message_segment::create_ack(uint16_t source_por
     return std::make_shared<message_segment>(source_port, destination_port, sequence_number, 0, type::stream_segment, flag::ack, EMPTY_PAYLOAD);
 }
 
+std::shared_ptr<message_segment> message_segment::create_fin(uint16_t source_port, uint16_t destination_port)
+{
+    return std::make_shared<message_segment>(source_port, destination_port, 0, 0, type::stream_segment, flag::fin, EMPTY_PAYLOAD);
+}
+
 uint16_t message_segment::get_source_port() const
 {
     return source_port;

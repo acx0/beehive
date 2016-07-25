@@ -53,7 +53,7 @@ void datagram_socket_manager::process_segment(uint64_t source_address, std::shar
     }
 
     auto segment_queue = segment_queue_map.get_or_add(segment->get_destination_port(), std::make_shared<threadsafe_blocking_queue<datagram_segment>>());
-    segment_queue->push(datagram_segment(source_address, segment));
+    segment_queue->push(datagram_segment{source_address, segment});
 }
 
 uint32_t datagram_socket_manager::get_next_socket_suffix()
