@@ -1,8 +1,10 @@
 #include <cstdlib>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "beehive.h"
+#include "xbee_communication_endpoint.h"
 #include "xbee_s1.h"
 
 // TODO: add signal handler for ctrl-c?
@@ -101,7 +103,7 @@ int main(int argc, char *argv[])
             return xbee.configure_firmware_settings() ? EXIT_SUCCESS : EXIT_FAILURE;
         }
 
-        beehive().run();
+        beehive(std::make_shared<xbee_communication_endpoint>()).run();
     }
     catch (const std::exception &e)
     {

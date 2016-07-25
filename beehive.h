@@ -16,6 +16,7 @@
 
 #include "beehive_message.h"
 #include "channel_manager.h"
+#include "communication_endpoint.h"
 #include "connection_tuple.h"
 #include "datagram_socket_manager.h"
 #include "logger.h"
@@ -36,7 +37,7 @@ struct neighbour_info
 class beehive
 {
 public:
-    beehive();
+    beehive(std::shared_ptr<communication_endpoint> endpoint);
 
     void run();
 
@@ -56,9 +57,8 @@ private:
     void process_neighbour_discovery_message(uint64_t source_address, std::shared_ptr<message_segment> segment);
 
     static const std::string BEEHIVE_SOCKET_PATH;
-    static const std::chrono::milliseconds FRAME_READER_SLEEP_DURATION;
 
-    xbee_s1 xbee;
+    std::shared_ptr<communication_endpoint> endpoint;
     // TODO: bound frame_writer_queue to a fixed size?
     std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> frame_writer_queue;
     threadsafe_blocking_queue<std::shared_ptr<uart_frame>> frame_processor_queue;

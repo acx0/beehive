@@ -6,23 +6,17 @@
  *  - suffix added to BEEHIVE_SOCKET_PATH to make testing multiple devices on same machine easier
  */
 const std::string beehive::BEEHIVE_SOCKET_PATH = std::string("\0beehive0", 9);
-const std::chrono::milliseconds beehive::FRAME_READER_SLEEP_DURATION(25);   // TODO: test how small this can be without hogging lock
 
-beehive::beehive()
-    : frame_writer_queue(std::make_shared<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>>()), _channel_manager(frame_writer_queue), _datagram_socket_manager(frame_writer_queue)
+beehive::beehive(std::shared_ptr<communication_endpoint> endpoint)
+    : endpoint(endpoint), frame_writer_queue(std::make_shared<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>>()), _channel_manager(frame_writer_queue), _datagram_socket_manager(frame_writer_queue)
 {
 }
 
 void beehive::run()
 {
-    if (!xbee.initialize())
-    {
-        return;     // TODO: retries
-    }
-
     // TODO: better way to expose these state variables to all classes?
     //  - include header with static vars?
-    _channel_manager.set_local_address(xbee.get_address());
+    _channel_manager.set_local_address(endpoint->get_address());
 
     std::thread request_handler(&beehive::request_handler, this);
     std::thread frame_processor(&beehive::frame_processor, this);
@@ -199,7 +193,7 @@ void beehive::frame_processor()
             }
 
             uint64_t source_address = rx_packet->get_source_address();
-            uint64_t destination_address = rx_packet->is_broadcast_frame() ? xbee_s1::BROADCAST_ADDRESS : xbee.get_address();
+            uint64_t destination_address = rx_packet->is_broadcast_frame() ? xbee_s1::BROADCAST_ADDRESS : endpoint->get_address();
 
             connection_tuple connection_key(source_address, segment->get_source_port(), destination_address, segment->get_destination_port());
             log_segment(connection_key, segment);
@@ -228,13 +222,9 @@ void beehive::frame_reader()
 
     while (true)
     {
-        auto frame = xbee.read_frame();
+        auto frame = endpoint->receive_frame();
         if (frame == nullptr)
         {
-            // note: sleep is needed to prevent xbee_s1::read_frame from keeping access lock held
-            // TODO: explicitly schedule frame reads/writes?
-            // TODO: std::this_thread::yield() didn't seem to work, try multiple yields?
-            std::this_thread::sleep_for(FRAME_READER_SLEEP_DURATION);
             continue;
         }
 
@@ -249,7 +239,7 @@ void beehive::frame_writer()
     while (true)
     {
         auto frame = frame_writer_queue->wait_and_pop();
-        xbee.write_frame(*frame);
+        endpoint->transmit_frame(*frame);
     }
 }
 
