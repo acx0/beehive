@@ -3,19 +3,24 @@
 // TODO: rf_data can't be empty, xbee discards packet (double check)
 const size_t rx_packet_64_frame::MIN_FRAME_DATA_LENGTH = sizeof(api_identifier_value) + sizeof(source_address) + sizeof(rssi) + sizeof(options);
 
+rx_packet_64_frame::rx_packet_64_frame(uint64_t source_address, uint8_t rssi, uint8_t options, std::vector<uint8_t> rf_data)
+    : frame_data(api_identifier::rx_packet_64), source_address(source_address), rssi(rssi), options(options), rf_data(rf_data)
+{
+}
+
 rx_packet_64_frame::rx_packet_64_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end)
     : frame_data(api_identifier::rx_packet_64)
 {
-    if (begin[0] != api_identifier::rx_packet_64)
-    {
-        // TODO: exception
-        std::cerr << "not an rx_packet_64 frame" << std::endl;
-    }
-
     if (end - begin < MIN_FRAME_DATA_LENGTH)
     {
         // TODO: exception
         std::cerr << "invalid frame size" << std::endl;
+    }
+
+    if (begin[0] != api_identifier::rx_packet_64)
+    {
+        // TODO: exception
+        std::cerr << "not an rx_packet_64 frame" << std::endl;
     }
 
     // unpack 8 byte address from bytes 1-8

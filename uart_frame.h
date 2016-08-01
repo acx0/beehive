@@ -11,6 +11,7 @@
 #include "frame_data.h"
 #include "logger.h"
 #include "rx_packet_64_frame.h"
+#include "tx_request_64_frame.h"
 #include "tx_status_frame.h"
 #include "util.h"
 

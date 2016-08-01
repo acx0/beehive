@@ -22,6 +22,10 @@ std::shared_ptr<uart_frame> uart_frame::parse_frame(std::vector<uint8_t>::const_
 
     switch (begin[API_IDENTIFIER_OFFSET])
     {
+        case frame_data::api_identifier::tx_request_64:
+            return std::make_shared<uart_frame>(begin[LENGTH_MSB_OFFSET], begin[LENGTH_LSB_OFFSET],
+                std::make_shared<tx_request_64_frame>(begin + API_IDENTIFIER_OFFSET, end - 1), *(end - 1));
+
         case frame_data::api_identifier::rx_packet_64:
             return std::make_shared<uart_frame>(begin[LENGTH_MSB_OFFSET], begin[LENGTH_LSB_OFFSET],
                 std::make_shared<rx_packet_64_frame>(begin + API_IDENTIFIER_OFFSET, end - 1), *(end - 1));

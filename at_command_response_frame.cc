@@ -7,16 +7,16 @@ at_command_response_frame::at_command_response_frame(std::vector<uint8_t>::const
     : frame_data(api_identifier::at_command_response)
 {
     // TODO: move this logic outside of constructor into parse method?
-    if (begin[0] != api_identifier::at_command_response)
-    {
-        // TODO: exception
-        std::cerr << "not an at_command_response frame" << std::endl;
-    }
-
     if (end - begin < MIN_FRAME_DATA_LENGTH)
     {
         // TODO: exception
         std::cerr << "invalid frame size" << std::endl;
+    }
+
+    if (begin[0] != api_identifier::at_command_response)
+    {
+        // TODO: exception
+        std::cerr << "not an at_command_response frame" << std::endl;
     }
 
     frame_id = begin[1];

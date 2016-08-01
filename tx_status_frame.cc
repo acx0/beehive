@@ -6,16 +6,16 @@ const size_t tx_status_frame::MIN_FRAME_DATA_LENGTH = sizeof(api_identifier_valu
 tx_status_frame::tx_status_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end)
     : frame_data(api_identifier::tx_status)
 {
-    if (begin[0] != api_identifier::tx_status)
-    {
-        // TODO: exception
-        std::cerr << "not a tx_status frame" << std::endl;
-    }
-
     if (end - begin < MIN_FRAME_DATA_LENGTH)
     {
         // TODO: exception
         std::cerr << "invalid frame size" << std::endl;
+    }
+
+    if (begin[0] != api_identifier::tx_status)
+    {
+        // TODO: exception
+        std::cerr << "not a tx_status frame" << std::endl;
     }
 
     frame_id = begin[1];

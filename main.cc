@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "beehive.h"
+#include "simulated_communication_endpoint.h"
 #include "xbee_communication_endpoint.h"
 #include "xbee_s1.h"
 
@@ -13,6 +14,8 @@ int main(int argc, char *argv[])
     bool configure = false;
     bool reset = false;
     bool run_tests = false;
+    bool simulate_xbee = false;
+    bool simulate_wireless = false;
 
     if (argc > 1)
     {
@@ -30,6 +33,14 @@ int main(int argc, char *argv[])
             else if (std::string(argv[i]) == "--test")
             {
                 run_tests = true;
+            }
+            else if (std::string(argv[i]) == "--simulate-xbee")
+            {
+                simulate_xbee = true;
+            }
+            else if (std::string(argv[i]) == "--simulate-wireless")
+            {
+                simulate_wireless = true;
             }
             else
             {
@@ -95,15 +106,30 @@ int main(int argc, char *argv[])
 
             return EXIT_FAILURE;
         }
-
-        // TODO: as of now configure only supported after a reset is performed
-        if (configure)
+        else if (configure)
         {
+            // TODO: as of now configure only supported after a reset is performed
             xbee_s1 xbee(9600);
             return xbee.configure_firmware_settings() ? EXIT_SUCCESS : EXIT_FAILURE;
         }
+        else if (simulate_wireless)
+        {
+            return simulated_broadcast_medium().start() ? EXIT_SUCCESS : EXIT_FAILURE;
+        }
+        else
+        {
+            std::shared_ptr<communication_endpoint> endpoint;
+            if (simulate_xbee)
+            {
+                endpoint = std::make_shared<simulated_communication_endpoint>();
+            }
+            else
+            {
+                endpoint = std::make_shared<xbee_communication_endpoint>();
+            }
 
-        beehive(std::make_shared<xbee_communication_endpoint>()).run();
+            beehive(endpoint).run();
+        }
     }
     catch (const std::exception &e)
     {
