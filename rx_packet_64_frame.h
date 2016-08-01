@@ -21,7 +21,7 @@ public:
         pan_broadcast = 2
     };
 
-    rx_packet_64_frame(const std::vector<uint8_t> &frame);
+    rx_packet_64_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end);
 
     uint64_t get_source_address() const;
     const std::vector<uint8_t> &get_rf_data() const;

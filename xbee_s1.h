@@ -19,8 +19,6 @@
 #include "at_command.h"
 #include "at_command_response_frame.h"
 #include "logger.h"
-#include "rx_packet_64_frame.h"
-#include "tx_status_frame.h"
 #include "uart_frame.h"
 #include "util.h"
 #include "xbee_config.h"
@@ -44,8 +42,6 @@ public:
     static const uint32_t CTS_LOW_SLEEP_MS; // how long to sleep when CTS is low
     static const uint32_t MAX_INVALID_FRAME_READS;  // TODO: haven't pinpointed why this happens, but sleeping seems to 'fix' corrupt frame reads
     static const uint32_t INVALID_FRAME_READ_SLEEP_MS;
-    static const uint8_t HEADER_LENGTH_END_POSITION;
-    static const uint8_t API_IDENTIFIER_INDEX;
     static const char *const COMMAND_SEQUENCE;
 
     xbee_s1();

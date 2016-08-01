@@ -223,12 +223,10 @@ void beehive::frame_reader()
     while (true)
     {
         auto frame = endpoint->receive_frame();
-        if (frame == nullptr)
+        if (frame != nullptr)
         {
-            continue;
+            frame_processor_queue.push(frame);  // TODO: bound this queue to a certain size?
         }
-
-        frame_processor_queue.push(frame);  // TODO: bound this queue to a certain size?
     }
 }
 

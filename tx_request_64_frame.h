@@ -27,7 +27,7 @@ private:
     uint8_t frame_id;
     uint64_t destination_address;
     uint8_t options_value;
-    std::vector<uint8_t> rf_data;
+    std::vector<uint8_t> rf_data;   // TODO: max size 100 bytes
 };
 
 #endif

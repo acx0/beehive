@@ -10,8 +10,6 @@ const uint32_t xbee_s1::CTS_LOW_RETRIES = 100;
 const uint32_t xbee_s1::CTS_LOW_SLEEP_MS = 5;
 const uint32_t xbee_s1::MAX_INVALID_FRAME_READS = 20;
 const uint32_t xbee_s1::INVALID_FRAME_READ_SLEEP_MS = 200;
-const uint8_t xbee_s1::HEADER_LENGTH_END_POSITION = 3;   // delimiter + 2 length bytes
-const uint8_t xbee_s1::API_IDENTIFIER_INDEX = 0;
 const char *const xbee_s1::COMMAND_SEQUENCE = "+++";
 
 // TODO: check for exceptions when initializing serial object
@@ -453,12 +451,12 @@ std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
     static uint32_t invalid_frame_reads = 0;
 
     // read up to length header first to determine how many more bytes to read from serial line
-    std::vector<uint8_t> frame_head;    // contains start delimiter to length bytes
+    std::vector<uint8_t> frame;
     size_t bytes_read_head;
 
     try
     {
-        bytes_read_head = serial.read(frame_head, HEADER_LENGTH_END_POSITION);
+        bytes_read_head = serial.read(frame, uart_frame::HEADER_LENGTH);
     }
     catch (const serial::PortNotOpenedException &e)
     {
@@ -476,7 +474,7 @@ std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
         return nullptr;
     }
 
-    if (bytes_read_head != HEADER_LENGTH_END_POSITION)
+    if (bytes_read_head != uart_frame::HEADER_LENGTH)
     {
         if (bytes_read_head != 0)
         {
@@ -486,7 +484,7 @@ std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
         return nullptr;
     }
 
-    if (frame_head[0] != uart_frame::FRAME_DELIMITER)
+    if (frame[uart_frame::FRAME_DELIMITER_OFFSET] != uart_frame::FRAME_DELIMITER)
     {
         ++invalid_frame_reads;
 
@@ -499,17 +497,15 @@ std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
         return nullptr;
     }
 
-    uint16_t length = 0;
-    length += frame_head[1] << (sizeof(uint8_t) * 8);
-    length += frame_head[2];
-
-    // note: in API mode 2 (enabled with escape characters) length field doesn't account for escaped chars; checksum can be escaped
-    std::vector<uint8_t> frame_tail;    // contains api identifier to checksum bytes
+    // note:
+    //  - in API mode 2 (enabled with escape characters) length field doesn't account for escaped chars
+    //  - checksum can be escaped
+    uint16_t length = util::unpack_bytes_to_width<uint16_t>(frame.begin() + uart_frame::LENGTH_MSB_OFFSET);
     size_t bytes_read_tail;
 
     try
     {
-        bytes_read_tail = serial.read(frame_tail, length + 1);    // payload + checksum
+        bytes_read_tail = serial.read(frame, length + 1);    // payload + checksum
     }
     catch (const serial::PortNotOpenedException &e)
     {
@@ -528,10 +524,9 @@ std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
         return nullptr;
     }
 
-    LOG("read  [", util::get_frame_hex(frame_head), " ", util::get_frame_hex(frame_tail), "] (", bytes_read_head + bytes_read_tail, " bytes)");
-    uint8_t received_checksum = frame_tail[length];
-    frame_tail.resize(length);  // truncate checksum byte
-    uint8_t calculated_checksum = uart_frame::compute_checksum(frame_tail);
+    LOG("read  [", util::get_frame_hex(frame), "] (", frame.size(), " bytes)");
+    uint8_t received_checksum = *(frame.end() - 1);
+    uint8_t calculated_checksum = uart_frame::compute_checksum(frame.begin() + uart_frame::HEADER_LENGTH, frame.end() - 1); // ignore frame header and trailing checksum
 
     if (calculated_checksum != received_checksum)
     {
@@ -539,25 +534,7 @@ std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
         return nullptr;
     }
 
-    // TODO: move this into a uart_frame ctor?
-    switch (frame_tail[API_IDENTIFIER_INDEX])
-    {
-        case frame_data::api_identifier::rx_packet_64:
-            return std::make_shared<uart_frame>(frame_head[1], frame_head[2],
-                std::make_shared<rx_packet_64_frame>(frame_tail), received_checksum);
-
-        case frame_data::api_identifier::at_command_response:
-            return std::make_shared<uart_frame>(frame_head[1], frame_head[2],
-                std::make_shared<at_command_response_frame>(frame_tail), received_checksum);
-
-        case frame_data::api_identifier::tx_status:
-            return std::make_shared<uart_frame>(frame_head[1], frame_head[2],
-                std::make_shared<tx_status_frame>(frame_tail), received_checksum);
-
-        default:
-            LOG_ERROR("invalid api identifier value");
-            return nullptr;
-    }
+    return uart_frame::parse_frame(frame.begin(), frame.end());
 }
 
 std::shared_ptr<uart_frame> xbee_s1::unlocked_write_and_read_frame(const std::vector<uint8_t> &payload)

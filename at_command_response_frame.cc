@@ -1,32 +1,32 @@
 #include "at_command_response_frame.h"
 
-// api_identifier + frame_id + at_command (2 bytes) + status
 // note: value can be empty
-const size_t at_command_response_frame::MIN_FRAME_DATA_LENGTH = 5;
+const size_t at_command_response_frame::MIN_FRAME_DATA_LENGTH = sizeof(api_identifier_value) + sizeof(frame_id) + sizeof(at_command) + sizeof(status_value);
 
-at_command_response_frame::at_command_response_frame(const std::vector<uint8_t> &frame)
+at_command_response_frame::at_command_response_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end)
     : frame_data(api_identifier::at_command_response)
 {
-    if (frame[0] != api_identifier::at_command_response)
+    // TODO: move this logic outside of constructor into parse method?
+    if (begin[0] != api_identifier::at_command_response)
     {
         // TODO: exception
         std::cerr << "not an at_command_response frame" << std::endl;
     }
 
-    if (frame.size() < MIN_FRAME_DATA_LENGTH)
+    if (end - begin < MIN_FRAME_DATA_LENGTH)
     {
         // TODO: exception
         std::cerr << "invalid frame size" << std::endl;
     }
 
-    frame_id = frame[1];
-    at_command[0] = frame[2];
-    at_command[1] = frame[3];
-    status_value = frame[4];
+    frame_id = begin[1];
+    at_command[0] = begin[2];
+    at_command[1] = begin[3];
+    status_value = begin[4];
 
-    if (frame.size() > MIN_FRAME_DATA_LENGTH)
+    if (end - begin > MIN_FRAME_DATA_LENGTH)
     {
-        value = std::vector<uint8_t>(frame.begin() + MIN_FRAME_DATA_LENGTH, frame.end());
+        value = std::vector<uint8_t>(begin + MIN_FRAME_DATA_LENGTH, end);
     }
 }
 

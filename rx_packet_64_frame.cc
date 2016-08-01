@@ -3,16 +3,16 @@
 // TODO: rf_data can't be empty, xbee discards packet (double check)
 const size_t rx_packet_64_frame::MIN_FRAME_DATA_LENGTH = sizeof(api_identifier_value) + sizeof(source_address) + sizeof(rssi) + sizeof(options);
 
-rx_packet_64_frame::rx_packet_64_frame(const std::vector<uint8_t> &frame)
+rx_packet_64_frame::rx_packet_64_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end)
     : frame_data(api_identifier::rx_packet_64)
 {
-    if (frame[0] != api_identifier::rx_packet_64)
+    if (begin[0] != api_identifier::rx_packet_64)
     {
         // TODO: exception
         std::cerr << "not an rx_packet_64 frame" << std::endl;
     }
 
-    if (frame.size() < MIN_FRAME_DATA_LENGTH)
+    if (end - begin < MIN_FRAME_DATA_LENGTH)
     {
         // TODO: exception
         std::cerr << "invalid frame size" << std::endl;
@@ -20,13 +20,13 @@ rx_packet_64_frame::rx_packet_64_frame(const std::vector<uint8_t> &frame)
 
     // unpack 8 byte address from bytes 1-8
     auto offset = 1;
-    source_address = util::unpack_bytes_to_width<uint64_t>(frame.begin() + offset);
-    rssi = frame[9];
-    options = frame[10];
+    source_address = util::unpack_bytes_to_width<uint64_t>(begin + offset);
+    rssi = begin[9];
+    options = begin[10];
 
-    if (frame.size() > MIN_FRAME_DATA_LENGTH)
+    if (end - begin > MIN_FRAME_DATA_LENGTH)
     {
-        rf_data = std::vector<uint8_t>(frame.begin() + MIN_FRAME_DATA_LENGTH, frame.end());
+        rf_data = std::vector<uint8_t>(begin + MIN_FRAME_DATA_LENGTH, end);
     }
 }
 

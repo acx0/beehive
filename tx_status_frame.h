@@ -21,7 +21,7 @@ public:
         purged = 0x03
     };
 
-    tx_status_frame(const std::vector<uint8_t> &frame);
+    tx_status_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end);
 
     operator std::vector<uint8_t>() const override;
 

@@ -20,7 +20,7 @@ public:
         invalid_parameter = 0x03
     };
 
-    at_command_response_frame(const std::vector<uint8_t> &frame);
+    at_command_response_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end);
 
     uint8_t get_status();
     const std::vector<uint8_t> &get_value() const;
