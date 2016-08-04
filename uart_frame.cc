@@ -20,28 +20,37 @@ std::shared_ptr<uart_frame> uart_frame::parse_frame(std::vector<uint8_t>::const_
         return nullptr;
     }
 
+    std::shared_ptr<frame_data> data;
     switch (begin[API_IDENTIFIER_OFFSET])
     {
         case frame_data::api_identifier::tx_request_64:
-            return std::make_shared<uart_frame>(begin[LENGTH_MSB_OFFSET], begin[LENGTH_LSB_OFFSET],
-                std::make_shared<tx_request_64_frame>(begin + API_IDENTIFIER_OFFSET, end - 1), *(end - 1));
+            data = tx_request_64_frame::parse_frame(begin + API_IDENTIFIER_OFFSET, end - 1);
+            break;
 
         case frame_data::api_identifier::rx_packet_64:
-            return std::make_shared<uart_frame>(begin[LENGTH_MSB_OFFSET], begin[LENGTH_LSB_OFFSET],
-                std::make_shared<rx_packet_64_frame>(begin + API_IDENTIFIER_OFFSET, end - 1), *(end - 1));
+            data = rx_packet_64_frame::parse_frame(begin + API_IDENTIFIER_OFFSET, end - 1);
+            break;
 
         case frame_data::api_identifier::at_command_response:
-            return std::make_shared<uart_frame>(begin[LENGTH_MSB_OFFSET], begin[LENGTH_LSB_OFFSET],
-                std::make_shared<at_command_response_frame>(begin + API_IDENTIFIER_OFFSET, end - 1), *(end - 1));
+            data = at_command_response_frame::parse_frame(begin + API_IDENTIFIER_OFFSET, end - 1);
+            break;
 
         case frame_data::api_identifier::tx_status:
-            return std::make_shared<uart_frame>(begin[LENGTH_MSB_OFFSET], begin[LENGTH_LSB_OFFSET],
-                std::make_shared<tx_status_frame>(begin + API_IDENTIFIER_OFFSET, end - 1), *(end - 1));
+            data = tx_status_frame::parse_frame(begin + API_IDENTIFIER_OFFSET, end - 1);
+            break;
 
         default:
-            LOG_ERROR("invalid api identifier value");
+            LOG_ERROR("invalid api identifier value: ", +begin[API_IDENTIFIER_OFFSET]);
             return nullptr;
     }
+
+    if (data == nullptr)
+    {
+        LOG_ERROR("failed to parse frame");
+        return nullptr;
+    }
+
+    return std::make_shared<uart_frame>(begin[LENGTH_MSB_OFFSET], begin[LENGTH_LSB_OFFSET], data, *(end - 1));
 }
 
 uart_frame::uart_frame(std::shared_ptr<frame_data> data)

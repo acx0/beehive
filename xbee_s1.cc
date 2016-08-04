@@ -445,7 +445,6 @@ void xbee_s1::unlocked_write_frame(const std::vector<uint8_t> &payload)
     LOG("write [", util::get_frame_hex(payload), "] (", bytes_written, " bytes)");
 }
 
-// TODO: factor out uart_frame parsing logic so that it can also be used in simulated_channel
 std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
 {
     static uint32_t invalid_frame_reads = 0;

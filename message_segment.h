@@ -2,7 +2,6 @@
 #define MESSAGE_SEGMENT_H
 
 #include <cstdint>
-#include <iostream>
 #include <iterator>
 #include <memory>
 #include <numeric>

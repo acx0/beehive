@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <iterator>
+#include <memory>
 #include <vector>
 
 #include "frame_data.h"
@@ -13,6 +14,8 @@ class tx_request_64_frame : public frame_data
 public:
     static const size_t MIN_FRAME_DATA_LENGTH;
 
+    static std::shared_ptr<tx_request_64_frame> parse_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end);
+
     enum options : uint8_t
     {
         none = 0x00,
@@ -22,7 +25,7 @@ public:
 
     // TODO: can have diagnostic tx_requests sent with enable_response_frame = true to see if writes are actually occurring
     tx_request_64_frame(uint64_t destination_address, const std::vector<uint8_t> &rf_data, bool enable_response_frame = false);
-    tx_request_64_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end);
+    tx_request_64_frame(uint8_t frame_id, uint64_t destination_address, uint8_t options_value, const std::vector<uint8_t> &rf_data);
 
     uint64_t get_destination_address() const;
     const std::vector<uint8_t> &get_rf_data() const;
