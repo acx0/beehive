@@ -1,7 +1,6 @@
 #ifndef XBEE_COMMUNICATION_ENDPOINT_H
 #define XBEE_COMMUNICATION_ENDPOINT_H
 
-#include <chrono>
 #include <stdexcept>
 
 #include "communication_endpoint.h"
@@ -17,8 +16,6 @@ public:
     virtual std::shared_ptr<uart_frame> receive_frame();
 
 private:
-    static const std::chrono::milliseconds FRAME_READER_SLEEP_DURATION;
-
     xbee_s1 xbee;
 };
 

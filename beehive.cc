@@ -6,6 +6,7 @@
  *  - suffix added to BEEHIVE_SOCKET_PATH to make testing multiple devices on same machine easier
  */
 const std::string beehive::BEEHIVE_SOCKET_PATH = std::string("\0beehive0", 9);
+const std::chrono::milliseconds beehive::WRITE_QUEUE_READ_TIMEOUT(5);
 
 beehive::beehive(std::shared_ptr<communication_endpoint> endpoint)
     : endpoint(endpoint), frame_writer_queue(std::make_shared<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>>()), _channel_manager(frame_writer_queue), _datagram_socket_manager(frame_writer_queue)
@@ -20,14 +21,13 @@ void beehive::run()
 
     std::thread request_handler(&beehive::request_handler, this);
     std::thread frame_processor(&beehive::frame_processor, this);
-    std::thread frame_reader(&beehive::frame_reader, this);
-    std::thread frame_writer(&beehive::frame_writer, this);
+    std::thread frame_io_scheduler(&beehive::frame_io_scheduler, this);
     std::thread neighbour_discoverer(&beehive::neighbour_discoverer, this);
 
     request_handler.join();
     frame_processor.join();
-    frame_reader.join();
-    frame_writer.join();
+    frame_io_scheduler.join();
+    neighbour_discoverer.join();
 }
 
 void beehive::log_segment(const connection_tuple &key, std::shared_ptr<message_segment> segment)
@@ -216,28 +216,23 @@ void beehive::frame_processor()
     }
 }
 
-void beehive::frame_reader()
+void beehive::frame_io_scheduler()
 {
-    LOG("starting frame_reader thread");
+    LOG("starting frame_io_scheduler thread");
 
     while (true)
     {
-        auto frame = endpoint->receive_frame();
-        if (frame != nullptr)
+        auto rx_frame = endpoint->receive_frame();
+        if (rx_frame != nullptr)
         {
-            frame_processor_queue.push(frame);  // TODO: bound this queue to a certain size?
+            frame_processor_queue.push(rx_frame);  // TODO: bound this queue to a certain size?
         }
-    }
-}
 
-void beehive::frame_writer()
-{
-    LOG("starting frame_writer thread");
-
-    while (true)
-    {
-        auto frame = frame_writer_queue->wait_and_pop();
-        endpoint->transmit_frame(*frame);
+        std::shared_ptr<std::vector<uint8_t>> tx_frame;
+        if (frame_writer_queue->timed_wait_and_pop(tx_frame, WRITE_QUEUE_READ_TIMEOUT))
+        {
+            endpoint->transmit_frame(*tx_frame);
+        }
     }
 }
 

@@ -3,13 +3,15 @@
 const uint64_t xbee_s1::ADDRESS_UNKNOWN = 0xffffffffffffffff;
 const uint64_t xbee_s1::BROADCAST_ADDRESS = 0xffff;
 // setting timeout <= 525 seems to cause serial reads to sometimes return nothing on odroid
-const uint32_t xbee_s1::DEFAULT_SERIAL_TIMEOUT_MS = 700;
+const uint32_t xbee_s1::DEFAULT_SERIAL_TIMEOUT_MS = 1000;
 const uint32_t xbee_s1::DEFAULT_GUARD_TIME_S = 1;
 const uint32_t xbee_s1::DEFAULT_COMMAND_MODE_TIMEOUT_S = 10;
 const uint32_t xbee_s1::CTS_LOW_RETRIES = 100;
-const uint32_t xbee_s1::CTS_LOW_SLEEP_MS = 5;
 const uint32_t xbee_s1::MAX_INVALID_FRAME_READS = 20;
-const uint32_t xbee_s1::INVALID_FRAME_READ_SLEEP_MS = 200;
+const std::chrono::milliseconds xbee_s1::CTS_LOW_SLEEP(5);
+const std::chrono::milliseconds xbee_s1::INVALID_FRAME_READ_BACKOFF_SLEEP(200);
+const std::chrono::milliseconds xbee_s1::SERIAL_READ_THRESHOLD(5);
+const std::chrono::microseconds xbee_s1::SERIAL_READ_BACKOFF_SLEEP(100);
 const char *const xbee_s1::COMMAND_SEQUENCE = "+++";
 
 // TODO: check for exceptions when initializing serial object
@@ -410,7 +412,7 @@ void xbee_s1::unlocked_write_frame(const std::vector<uint8_t> &payload)
                 }
                 else
                 {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(CTS_LOW_SLEEP_MS));
+                    std::this_thread::sleep_for(CTS_LOW_SLEEP);
                     return false;
                 }
             }, CTS_LOW_RETRIES);
@@ -455,6 +457,42 @@ std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
 
     try
     {
+        /*
+         * Ideally we'd check serial.available() once to see if there are bytes available to be read before incurring the potential read
+         * timeout cost of serial.read() when there aren't bytes available, but it seems available() has a bit of a delay.
+         *
+         * After some testing it looks like the average response for available() to reflect the presence of bytes on the serial line is 2ms
+         * and 3-4ms for available() to reflect the correct value. So far there hasn't been a case where calling serial.read(), after available()
+         * returned a non-zero value other than the full expected frame size, resulted in a failed frame read. Therefore we only wait until a
+         * presence of bytes is detected and then try to read a frame.
+         *
+         * An effort is made to reduce the amount of calls made to the serial interface as it seems that writing too many frames to the xbee
+         * can cause the device to lock up and stop responding in certain situations. So far it seems this lockup has only been triggered by
+         * repeated AT command frame writes and hasn't been reproducable by having two xbees constantly transmitting to each other.
+         *
+         * The only solution in the case of the xbee locking up seems to be removing and reinserting the USB to serial adapter or using the
+         * physical reset button if the adapter has one.
+         *
+         * TODO: ensure beehive can handle adapter being removed and reinserted
+         *  - expose state to indicate that device is no longer responding
+         */
+
+        size_t bytes_available = 0;
+        auto start_time = std::chrono::high_resolution_clock::now();
+        auto backoff_duration = SERIAL_READ_BACKOFF_SLEEP;
+
+        while ((bytes_available = serial.available()) == 0)
+        {
+            if (std::chrono::high_resolution_clock::now() - start_time >= SERIAL_READ_THRESHOLD)
+            {
+                return nullptr;
+            }
+
+            // TODO: bounded exponential backoff between calls? reset backoff duration upon successful frame read
+            std::this_thread::sleep_for(backoff_duration);
+            backoff_duration *= 2;
+        }
+
         bytes_read_head = serial.read(frame, uart_frame::HEADER_LENGTH);
     }
     catch (const serial::PortNotOpenedException &e)
@@ -489,7 +527,7 @@ std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
 
         if (invalid_frame_reads >= MAX_INVALID_FRAME_READS)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(INVALID_FRAME_READ_SLEEP_MS));
+            std::this_thread::sleep_for(INVALID_FRAME_READ_BACKOFF_SLEEP);
             invalid_frame_reads = 0;
         }
 

@@ -34,13 +34,15 @@ class xbee_s1
 public:
     static const uint64_t ADDRESS_UNKNOWN;
     static const uint64_t BROADCAST_ADDRESS;
-    static const uint32_t DEFAULT_SERIAL_TIMEOUT_MS;
+    static const uint32_t DEFAULT_SERIAL_TIMEOUT_MS;    // primarily controls how long a read in the underlying serial library will wait until it times out
     static const uint32_t DEFAULT_GUARD_TIME_S;
     static const uint32_t DEFAULT_COMMAND_MODE_TIMEOUT_S;
     static const uint32_t CTS_LOW_RETRIES;  // how many times to retry frame writes to serial line when CTS (clear to send) is low
-    static const uint32_t CTS_LOW_SLEEP_MS; // how long to sleep when CTS is low
     static const uint32_t MAX_INVALID_FRAME_READS;  // TODO: haven't pinpointed why this happens, but sleeping seems to 'fix' corrupt frame reads
-    static const uint32_t INVALID_FRAME_READ_SLEEP_MS;
+    static const std::chrono::milliseconds CTS_LOW_SLEEP;   // how long to sleep when CTS is low
+    static const std::chrono::milliseconds INVALID_FRAME_READ_BACKOFF_SLEEP;    // how long to backoff for if MAX_INVALID_FRAME_READS is hit
+    static const std::chrono::milliseconds SERIAL_READ_THRESHOLD;   // max duration to wait when reading from serial line
+    static const std::chrono::microseconds SERIAL_READ_BACKOFF_SLEEP;   // initial sleep duration when checking serial line for bytes available
     static const char *const COMMAND_SEQUENCE;
 
     xbee_s1();
@@ -54,12 +56,12 @@ public:
     std::shared_ptr<at_command_response_frame> write_at_command_frame(std::shared_ptr<at_command_frame> command);
     std::shared_ptr<uart_frame> read_frame();
     std::shared_ptr<uart_frame> write_and_read_frame(const std::vector<uint8_t> &payload);
+    bool read_ieee_source_address();    // TODO: split into read/set methods
 
 private:
     bool test_at_command_mode();
     bool enable_api_mode();
     bool enable_64_bit_addressing();
-    bool read_ieee_source_address();
     bool enable_strict_802_15_4_mode();
     bool configure_baud();
     bool write_to_non_volatile_memory();

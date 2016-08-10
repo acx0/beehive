@@ -48,15 +48,12 @@ private:
 
     void request_handler();
     void frame_processor();
-    // TODO: frame reads/writes should be explicitly scheduled
-    //  - note: xbee_s1::DEFAULT_SERIAL_TIMEOUT_MS will determine the longest duration a single frame read will take, will need to take this
-    //      into consideration when trying to fairly schedule reads/writes
-    void frame_reader();
-    void frame_writer();
+    void frame_io_scheduler();
     void neighbour_discoverer();
     void process_neighbour_discovery_message(uint64_t source_address, std::shared_ptr<message_segment> segment);
 
     static const std::string BEEHIVE_SOCKET_PATH;
+    static const std::chrono::milliseconds WRITE_QUEUE_READ_TIMEOUT;
 
     std::shared_ptr<communication_endpoint> endpoint;
     // TODO: bound frame_writer_queue to a fixed size?

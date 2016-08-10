@@ -13,13 +13,13 @@ int main(int argc, char *argv[])
 {
     bool configure = false;
     bool reset = false;
-    bool run_tests = false;
     bool simulate_xbee = false;
     bool simulate_wireless = false;
+    bool test_xbee = false;
 
     if (argc > 1)
     {
-        // TODO: flag for mode that does startup test, reads values in API mode and exits
+        // TODO: --read-xbee-config for dumping values of used registers
         for (int i = 1; i < argc; ++i)
         {
             if (std::string(argv[i]) == "--configure")
@@ -30,10 +30,6 @@ int main(int argc, char *argv[])
             {
                 reset = true;
             }
-            else if (std::string(argv[i]) == "--test")
-            {
-                run_tests = true;
-            }
             else if (std::string(argv[i]) == "--simulate-xbee")
             {
                 simulate_xbee = true;
@@ -41,6 +37,10 @@ int main(int argc, char *argv[])
             else if (std::string(argv[i]) == "--simulate-wireless")
             {
                 simulate_wireless = true;
+            }
+            else if (std::string(argv[i]) == "--test-xbee")
+            {
+                test_xbee = true;
             }
             else
             {
@@ -115,6 +115,11 @@ int main(int argc, char *argv[])
         else if (simulate_wireless)
         {
             return simulated_broadcast_medium().start() ? EXIT_SUCCESS : EXIT_FAILURE;
+        }
+        else if (test_xbee)
+        {
+            xbee_s1 xbee;
+            return xbee.read_ieee_source_address() ? EXIT_SUCCESS : EXIT_FAILURE;
         }
         else
         {
