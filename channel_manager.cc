@@ -262,7 +262,7 @@ void channel_manager::payload_write_handler(int control_socket_fd, int listen_so
     }
 
     auto channel = std::make_shared<reliable_channel<uint16_t>>(connection_key, communication_socket_fd, write_queue, segment_queue);
-    std::thread reliable_sender(&reliable_channel<uint16_t>::start_sending, std::ref(*channel));
+    std::thread reliable_sender(&reliable_channel<uint16_t>::start_sending, channel);
 
     while (true)
     {
