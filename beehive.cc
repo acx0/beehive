@@ -168,6 +168,30 @@ void beehive::request_handler()
         {
             _datagram_socket_manager.try_create_active_socket(client_socket_fd);
         }
+        else if (tokens[0] == beehive_message::NEIGHBOURS)
+        {
+            std::ostringstream oss;
+            oss << beehive_message::OK << beehive_message::SEPARATOR;
+            auto current_neighbours = neighbours.get_data();
+
+            if (current_neighbours.empty())
+            {
+                oss << beehive_message::NEIGHBOURS_NONE;
+            }
+
+            for (auto i = current_neighbours.begin(); i != current_neighbours.end(); ++i)
+            {
+                oss << std::setfill('0') << std::setw(16) << std::hex << i->first;  // TODO: util
+                auto next = i;
+
+                if (++next != current_neighbours.end())
+                {
+                    oss << ",";
+                }
+            }
+
+            beehive_message::send_message(client_socket_fd, oss.str());
+        }
     }
 }
 

@@ -22,6 +22,8 @@ public:
     static const std::string ACCEPT;
     static const std::string CLOSE;
     static const std::string SEND_DGRAM;
+    static const std::string NEIGHBOURS;
+    static const std::string NEIGHBOURS_NONE;
     static const std::string INVALID;
     static const std::string USED;
     static const std::string FAILED;
