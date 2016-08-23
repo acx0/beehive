@@ -191,6 +191,7 @@ void beehive::request_handler()
             }
 
             beehive_message::send_message(client_socket_fd, oss.str());
+            close(client_socket_fd);
         }
     }
 }
