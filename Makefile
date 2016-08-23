@@ -9,7 +9,7 @@ OBJ = $(SRC:%.cc=%.o)
 BIN = beehive
 
 $(BIN): $(OBJ)
-	$(CXX) $(LDFLAGS) -o $@ $^
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
 # note: need to be part of dialout group to access /dev/ttyUSB*
 # usage: make ARGS='<args>' test
