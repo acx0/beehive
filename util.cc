@@ -181,3 +181,11 @@ bool util::retry(std::function<bool()> function, uint32_t retries)
 
     return false;
 }
+
+bool util::try_parse_uint32_t(const std::string &str, uint32_t &out)
+{
+    std::istringstream iss(str);
+    iss >> out;
+
+    return static_cast<bool>(iss);
+}

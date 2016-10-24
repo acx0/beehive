@@ -1,10 +1,12 @@
 #include <cstdlib>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "beehive.h"
 #include "simulated_communication_endpoint.h"
+#include "util.h"
 #include "xbee_communication_endpoint.h"
 #include "xbee_s1.h"
 
@@ -16,6 +18,9 @@ int main(int argc, char *argv[])
     bool simulate_xbee = false;
     bool simulate_wireless = false;
     bool test_xbee = false;
+
+    uint32_t baud = xbee_s1::DEFAULT_BAUD;
+    std::string device = xbee_s1::DEFAULT_DEVICE;
 
     if (argc > 1)
     {
@@ -41,6 +46,40 @@ int main(int argc, char *argv[])
             else if (std::string(argv[i]) == "--test-xbee")
             {
                 test_xbee = true;
+            }
+            else if (std::string(argv[i]) == "--baud")
+            {
+                if (i + 1 == argc)
+                {
+                    LOG_ERROR("baud not supplied");
+                    return EXIT_FAILURE;
+                }
+
+                if (!util::try_parse_uint32_t(argv[i + 1], baud))
+                {
+                    LOG_ERROR("failed to parse baud: ", argv[i + 1]);
+                    return EXIT_FAILURE;
+                }
+
+                ++i;
+            }
+            else if (std::string(argv[i]) == "--device")
+            {
+                if (i + 1 == argc)
+                {
+                    LOG_ERROR("device not supplied");
+                    return EXIT_FAILURE;
+                }
+
+                device = argv[i + 1];
+                std::ifstream serial_device(device.c_str());
+                if (!serial_device)
+                {
+                    LOG("serial device not readable");
+                    return EXIT_FAILURE;
+                }
+
+                ++i;
             }
             else
             {
@@ -93,9 +132,9 @@ int main(int argc, char *argv[])
         {
             auto baud_attempts = std::vector<uint32_t>{ 9600, 115200 };
 
-            for (auto baud : baud_attempts)
+            for (auto baud_attempt : baud_attempts)
             {
-                xbee_s1 xbee(baud);     // TODO: can expose set_baud so we don't have to create new object
+                xbee_s1 xbee(device, baud_attempt);     // TODO: can expose set_baud so we don't have to create new object
                 if (xbee.reset_firmware_settings())
                 {
                     return EXIT_SUCCESS;
@@ -108,8 +147,7 @@ int main(int argc, char *argv[])
         }
         else if (configure)
         {
-            // TODO: as of now configure only supported after a reset is performed
-            xbee_s1 xbee(9600);
+            xbee_s1 xbee(device, baud);
             return xbee.configure_firmware_settings() ? EXIT_SUCCESS : EXIT_FAILURE;
         }
         else if (simulate_wireless)
@@ -118,7 +156,7 @@ int main(int argc, char *argv[])
         }
         else if (test_xbee)
         {
-            xbee_s1 xbee;
+            xbee_s1 xbee(device, baud);
             return xbee.read_ieee_source_address() ? EXIT_SUCCESS : EXIT_FAILURE;
         }
         else
@@ -130,7 +168,7 @@ int main(int argc, char *argv[])
             }
             else
             {
-                endpoint = std::make_shared<xbee_communication_endpoint>();
+                endpoint = std::make_shared<xbee_communication_endpoint>(device, baud);
             }
 
             beehive(endpoint).run();

@@ -1,7 +1,9 @@
 #include "xbee_s1.h"
 
+const std::string xbee_s1::DEFAULT_DEVICE = "/dev/ttyUSB0";
 const uint64_t xbee_s1::ADDRESS_UNKNOWN = 0xffffffffffffffff;
 const uint64_t xbee_s1::BROADCAST_ADDRESS = 0xffff;
+const uint32_t xbee_s1::DEFAULT_BAUD = 9600;
 // setting timeout <= 525 seems to cause serial reads to sometimes return nothing on odroid
 const uint32_t xbee_s1::DEFAULT_SERIAL_TIMEOUT_MS = 1000;
 const uint32_t xbee_s1::DEFAULT_GUARD_TIME_S = 1;
@@ -10,21 +12,15 @@ const uint32_t xbee_s1::CTS_LOW_RETRIES = 100;
 const uint32_t xbee_s1::MAX_INVALID_FRAME_READS = 20;
 const std::chrono::milliseconds xbee_s1::CTS_LOW_SLEEP(5);
 const std::chrono::milliseconds xbee_s1::INVALID_FRAME_READ_BACKOFF_SLEEP(200);
-const std::chrono::milliseconds xbee_s1::SERIAL_READ_THRESHOLD(5);
+const std::chrono::milliseconds xbee_s1::SERIAL_READ_THRESHOLD(10);
 const std::chrono::microseconds xbee_s1::SERIAL_READ_BACKOFF_SLEEP(100);
 const char *const xbee_s1::COMMAND_SEQUENCE = "+++";
 
 // TODO: check for exceptions when initializing serial object
-xbee_s1::xbee_s1()
-    : address(ADDRESS_UNKNOWN), serial(config.port, config.baud, serial::Timeout::simpleTimeout(DEFAULT_SERIAL_TIMEOUT_MS))
+xbee_s1::xbee_s1(const std::string &device, uint32_t baud)
+    : address(ADDRESS_UNKNOWN), serial(device, baud, serial::Timeout::simpleTimeout(DEFAULT_SERIAL_TIMEOUT_MS))
 {
-    LOG("using port: ", config.port, ", baud: ", config.baud);
-}
-
-xbee_s1::xbee_s1(uint32_t baud)
-    : address(ADDRESS_UNKNOWN), serial(config.port, baud, serial::Timeout::simpleTimeout(DEFAULT_SERIAL_TIMEOUT_MS))
-{
-    LOG("using port: ", config.port, ", baud: ", baud);
+    LOG("using port: ", device, ", baud: ", baud);
 }
 
 // TODO: rewrite this method to bootstrap into API mode and then issue these commands... at mode too flaky...
@@ -69,6 +65,7 @@ bool xbee_s1::initialize()
 {
     std::lock_guard<std::mutex> lock(access_lock);
 
+    // TODO: check which bauds require two stop bits, set conditionally
     // use two stop bits to increase success rate of frame reads/writes at higher baud
     serial.setStopbits(serial::stopbits_two);
     return read_ieee_source_address();

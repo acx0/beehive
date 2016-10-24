@@ -20,7 +20,6 @@
 #include "logger.h"
 #include "uart_frame.h"
 #include "util.h"
-#include "xbee_config.h"
 
 /*
  * notes:
@@ -32,8 +31,10 @@
 class xbee_s1
 {
 public:
+    static const std::string DEFAULT_DEVICE;
     static const uint64_t ADDRESS_UNKNOWN;
     static const uint64_t BROADCAST_ADDRESS;
+    static const uint32_t DEFAULT_BAUD;
     static const uint32_t DEFAULT_SERIAL_TIMEOUT_MS;    // primarily controls how long a read in the underlying serial library will wait until it times out
     static const uint32_t DEFAULT_GUARD_TIME_S;
     static const uint32_t DEFAULT_COMMAND_MODE_TIMEOUT_S;
@@ -45,8 +46,7 @@ public:
     static const std::chrono::microseconds SERIAL_READ_BACKOFF_SLEEP;   // initial sleep duration when checking serial line for bytes available
     static const char *const COMMAND_SEQUENCE;
 
-    xbee_s1();
-    xbee_s1(uint32_t baud);
+    xbee_s1(const std::string &device, uint32_t baud);
     bool reset_firmware_settings();
     bool initialize();
     bool configure_firmware_settings();
@@ -77,7 +77,6 @@ private:
     // note: although serial library employs its own line access protection, access_lock is used to ensure multi-frame read/write methods are atomic
     std::mutex access_lock;
     uint64_t address;
-    xbee_config config;
     serial::Serial serial;
 };
 

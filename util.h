@@ -34,6 +34,7 @@ namespace util
     bool try_configure_nonblocking_receive_timeout(int socket_fd);
     std::vector<std::string> split(const std::string &str, const std::string &separator);
     bool retry(std::function<bool()> function, uint32_t retries);
+    bool try_parse_uint32_t(const std::string &str, uint32_t &out);
 
     // unpack byte vector of size n into single value of width n bytes, MSB first, n = sizeof(T)
     template <typename T, typename Iterator>

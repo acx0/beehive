@@ -1,6 +1,7 @@
 #include "xbee_communication_endpoint.h"
 
-xbee_communication_endpoint::xbee_communication_endpoint()
+xbee_communication_endpoint::xbee_communication_endpoint(const std::string &device, uint32_t baud)
+    : xbee(device, baud)
 {
     if (!xbee.initialize())
     {
