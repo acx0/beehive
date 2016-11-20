@@ -68,14 +68,20 @@ bool xbee_s1::initialize()
     // TODO: check which bauds require two stop bits, set conditionally
     // use two stop bits to increase success rate of frame reads/writes at higher baud
     serial.setStopbits(serial::stopbits_two);
-    return read_ieee_source_address();
+    if (read_and_set_address())
+    {
+        LOG("ieee source address: ", util::to_hex_string(address));
+        return true;
+    }
+
+    return false;
 }
 
 // TODO: robust recovery -> not needed?, can instead have launcher take care of reset -> configure
 bool xbee_s1::configure_firmware_settings()
 {
     std::lock_guard<std::mutex> lock(access_lock);
-    return enable_api_mode() && enable_64_bit_addressing() && read_ieee_source_address()
+    return enable_api_mode() && enable_64_bit_addressing() && read_and_set_address()
         && enable_strict_802_15_4_mode() && configure_baud() && write_to_non_volatile_memory();
 }
 
@@ -126,10 +132,28 @@ bool xbee_s1::enable_64_bit_addressing()
     return true;
 }
 
-bool xbee_s1::read_ieee_source_address()
+bool xbee_s1::read_ieee_source_address(uint64_t &out_address)
 {
-    std::vector<uint8_t> address;
-    auto response = write_at_command_frame(std::make_shared<at_command_frame>(at_command::SERIAL_NUMBER_HIGH));
+    uint32_t serial_number_high;
+    if (!read_configuration_register(at_command::SERIAL_NUMBER_HIGH, "serial number high", serial_number_high))
+    {
+        return false;
+    }
+
+    uint32_t serial_number_low;
+    if (!read_configuration_register(at_command::SERIAL_NUMBER_LOW, "serial number low", serial_number_low))
+    {
+        return false;
+    }
+
+    out_address = (static_cast<uint64_t>(serial_number_high) << sizeof(uint32_t) * 8) + serial_number_low;
+    return true;
+}
+
+template <typename T>
+bool xbee_s1::read_configuration_register(const std::string &at_command_str, const std::string &command_description, T &register_value)
+{
+    auto response = write_at_command_frame(std::make_shared<at_command_frame>(at_command_str));
     if (response == nullptr)
     {
         return false;
@@ -137,44 +161,110 @@ bool xbee_s1::read_ieee_source_address()
 
     if (response->get_status() != at_command_response_frame::status::ok)
     {
-        LOG_ERROR("could not read serial number high, status: ", +response->get_status());
+        LOG_ERROR("could not read ", command_description, ", status: ", +response->get_status());
         return false;
     }
 
     auto value = response->get_value();
-    if (value.size() != sizeof(uint32_t))
+    if (value.size() != sizeof(T))
     {
-        LOG_ERROR("invalid at_command_response value size for serial number high");
+        LOG_ERROR("invalid at_command_response value size for ", command_description);
         return false;
     }
 
-    address.insert(address.end(), value.begin(), value.end());
-    response = write_at_command_frame(std::make_shared<at_command_frame>(at_command::SERIAL_NUMBER_LOW));
-    if (response == nullptr)
+    register_value = util::unpack_bytes_to_width<T>(value.begin());
+    return true;
+}
+
+bool xbee_s1::read_configuration_registers()
+{
+    // TODO: move outside method
+    std::map<uint32_t, std::string> baud_table
+        {
+            { 0, "1200" },
+            { 1, "2400" },
+            { 2, "4800" },
+            { 3, "9600" },
+            { 4, "19200" },
+            { 5, "38400" },
+            { 6, "57600" },
+            { 7, "115200" }
+        };
+
+    // TODO: create global mapping of at_command_str -> command description
+    uint64_t address;
+    if (!read_ieee_source_address(address))
     {
         return false;
     }
 
-    if (response->get_status() != at_command_response_frame::status::ok)
+    uint8_t api_mode;
+    if (!read_configuration_register(at_command::API_ENABLE, "api mode", api_mode))
     {
-        LOG_ERROR("could not read serial number low, status: ", +response->get_status());
         return false;
     }
 
-    value = response->get_value();
-    if (value.size() != sizeof(uint32_t))
+    uint16_t address_16;
+    if (!read_configuration_register(at_command::SOURCE_ADDRESS_16_BIT, "16 bit source address", address_16))
     {
-        LOG_ERROR("invalid at_command_response value size for serial number low");
         return false;
     }
 
-    address.insert(address.end(), value.begin(), value.end());
-    this->address = util::unpack_bytes_to_width<uint64_t>(address.begin());
+    uint32_t baud;
+    if (!read_configuration_register(at_command::INTERFACE_DATA_RATE, "interface data rate", baud))
+    {
+        return false;
+    }
 
-    // TODO: do iomanip settings have to be reverted? use ostringstream for now
-    std::ostringstream oss;
-    oss << "ieee source address: 0x" << std::setfill('0') << std::setw(16) << std::hex << +this->address;
-    LOG(oss.str());
+    uint8_t mac_mode;
+    if (!read_configuration_register(at_command::MAC_MODE, "mac mode", mac_mode))
+    {
+        return false;
+    }
+
+    uint16_t pan_id;
+    if (!read_configuration_register(at_command::PERSONAL_AREA_NETWORK_ID, "personal area network id", pan_id))
+    {
+        return false;
+    }
+
+    uint8_t channel;
+    if (!read_configuration_register(at_command::CHANNEL, "channel", channel))
+    {
+        return false;
+    }
+
+    uint8_t xbee_retries;
+    if (!read_configuration_register(at_command::XBEE_RETRIES, "xbee retries", xbee_retries))
+    {
+        return false;
+    }
+
+    uint8_t power_level;
+    if (!read_configuration_register(at_command::POWER_LEVEL, "power level", power_level))
+    {
+        return false;
+    }
+
+    uint8_t cca_threshold;
+    if (!read_configuration_register(at_command::CCA_THRESHOLD, "clear channel assessment threshold", cca_threshold))
+    {
+        return false;
+    }
+
+    LOG("[ATSH+ATSL] ieee source address: ", util::to_hex_string(address));
+    LOG("[ATAP] api mode: ", util::to_hex_string(api_mode));
+    LOG("[ATMY] 16 bit source address: ", util::to_hex_string(address_16));
+    std::string baud_str = baud_table.count(baud)
+        ? baud_table[baud]
+        : std::to_string(baud);
+    LOG("[ATBD] interface data rate: ", util::to_hex_string(baud), " => ", baud_str, "b/s");
+    LOG("[ATMM] mac mode: ", util::to_hex_string(mac_mode));
+    LOG("[ATID] personal area network id: ", util::to_hex_string(pan_id));
+    LOG("[ATCH] channel: ", util::to_hex_string(channel), " => TODO MHz");
+    LOG("[ATRR] xbee retries: ", util::to_hex_string(xbee_retries));
+    LOG("[ATPL] power level: ", util::to_hex_string(power_level), " => TODO dBm");
+    LOG("[ATCA] clear channel assessment threshold: ", util::to_hex_string(cca_threshold), " => TODO dBm");
 
     return true;
 }
@@ -238,6 +328,11 @@ bool xbee_s1::write_to_non_volatile_memory()
 
     LOG("settings successfully written to non-volatile memory");
     return true;
+}
+
+bool xbee_s1::read_and_set_address()
+{
+    return read_ieee_source_address(this->address);
 }
 
 uint64_t xbee_s1::get_address() const

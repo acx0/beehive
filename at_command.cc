@@ -12,6 +12,11 @@ const char *const at_command::SERIAL_NUMBER_LOW = "SL";
 const char *const at_command::SOFTWARE_RESET = "FR";
 const char *const at_command::MAC_MODE = "MM";
 const char *const at_command::INTERFACE_DATA_RATE = "BD";
+const char *const at_command::PERSONAL_AREA_NETWORK_ID = "ID";
+const char *const at_command::CHANNEL = "CH";
+const char *const at_command::XBEE_RETRIES = "RR";
+const char *const at_command::POWER_LEVEL = "PL";
+const char *const at_command::CCA_THRESHOLD = "CA";
 const char *const at_command::RESTORE_DEFAULTS = "RE";
 const char *const at_command::WRITE = "WR";
 

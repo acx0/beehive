@@ -20,6 +20,11 @@ public:
     static const char *const SOFTWARE_RESET;
     static const char *const MAC_MODE;
     static const char *const INTERFACE_DATA_RATE;
+    static const char *const PERSONAL_AREA_NETWORK_ID;
+    static const char *const CHANNEL;
+    static const char *const XBEE_RETRIES;
+    static const char *const POWER_LEVEL;
+    static const char *const CCA_THRESHOLD;
     static const char *const RESTORE_DEFAULTS;
     static const char *const WRITE;
 

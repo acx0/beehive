@@ -70,7 +70,7 @@ namespace util
     std::string to_hex_string(T i)
     {
         std::ostringstream oss;
-        oss << "0x" << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << i;
+        oss << "0x" << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << +i;
         return oss.str();
     }
 }

@@ -18,13 +18,13 @@ int main(int argc, char *argv[])
     bool simulate_xbee = false;
     bool simulate_wireless = false;
     bool test_xbee = false;
+    bool read_xbee_config = false;
 
     uint32_t baud = xbee_s1::DEFAULT_BAUD;
     std::string device = xbee_s1::DEFAULT_DEVICE;
 
     if (argc > 1)
     {
-        // TODO: --read-xbee-config for dumping values of used registers
         for (int i = 1; i < argc; ++i)
         {
             if (std::string(argv[i]) == "--configure")
@@ -46,6 +46,10 @@ int main(int argc, char *argv[])
             else if (std::string(argv[i]) == "--test-xbee")
             {
                 test_xbee = true;
+            }
+            else if (std::string(argv[i]) == "--read-xbee-config")
+            {
+                read_xbee_config = true;
             }
             else if (std::string(argv[i]) == "--baud")
             {
@@ -134,8 +138,8 @@ int main(int argc, char *argv[])
 
             for (auto baud_attempt : baud_attempts)
             {
-                xbee_s1 xbee(device, baud_attempt);     // TODO: can expose set_baud so we don't have to create new object
-                if (xbee.reset_firmware_settings())
+                // TODO: can expose set_baud so we don't have to create new object
+                if (xbee_s1(device, baud_attempt).reset_firmware_settings())
                 {
                     return EXIT_SUCCESS;
                 }
@@ -147,17 +151,19 @@ int main(int argc, char *argv[])
         }
         else if (configure)
         {
-            xbee_s1 xbee(device, baud);
-            return xbee.configure_firmware_settings() ? EXIT_SUCCESS : EXIT_FAILURE;
+            return xbee_s1(device, baud).configure_firmware_settings() ? EXIT_SUCCESS : EXIT_FAILURE;
         }
         else if (simulate_wireless)
         {
             return simulated_broadcast_medium().start() ? EXIT_SUCCESS : EXIT_FAILURE;
         }
+        else if (read_xbee_config)
+        {
+            return xbee_s1(device, baud).read_configuration_registers() ? EXIT_SUCCESS : EXIT_FAILURE;
+        }
         else if (test_xbee)
         {
-            xbee_s1 xbee(device, baud);
-            return xbee.read_ieee_source_address() ? EXIT_SUCCESS : EXIT_FAILURE;
+            return xbee_s1(device, baud).read_and_set_address() ? EXIT_SUCCESS : EXIT_FAILURE;
         }
         else
         {

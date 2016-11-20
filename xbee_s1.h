@@ -5,9 +5,9 @@
 #include <cstdint>
 #include <exception>
 #include <iomanip>
+#include <map>
 #include <memory>
 #include <mutex>
-#include <sstream>
 #include <string>
 #include <thread>
 #include <vector>
@@ -51,12 +51,13 @@ public:
     bool initialize();
     bool configure_firmware_settings();
 
+    bool read_and_set_address();
     uint64_t get_address() const;
     void write_frame(const std::vector<uint8_t> &payload);
     std::shared_ptr<at_command_response_frame> write_at_command_frame(std::shared_ptr<at_command_frame> command);
     std::shared_ptr<uart_frame> read_frame();
     std::shared_ptr<uart_frame> write_and_read_frame(const std::vector<uint8_t> &payload);
-    bool read_ieee_source_address();    // TODO: split into read/set methods
+    bool read_configuration_registers();
 
 private:
     bool test_at_command_mode();
@@ -67,6 +68,9 @@ private:
     bool write_to_non_volatile_memory();
     std::string execute_command(const at_command &command, bool exit_command_mode = true);
     bool enter_command_mode();
+    bool read_ieee_source_address(uint64_t &address);
+    template <typename T>
+        bool read_configuration_register(const std::string &at_command_str, const std::string &command_description, T &register_value);
 
     void unlocked_write_string(const std::string &str);
     std::string unlocked_read_line();
