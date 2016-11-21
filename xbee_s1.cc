@@ -390,7 +390,9 @@ bool xbee_s1::configure_baud()
 
 bool xbee_s1::write_to_non_volatile_memory()
 {
-    auto response = write_at_command_frame(std::make_shared<at_command_frame>(at_command::WRITE));
+    // note: writing to non-volatile memory can require a longer timeout when waiting for response frame
+    // TODO: use longer timeout for all at command writes?
+    auto response = write_at_command_frame(std::make_shared<at_command_frame>(at_command::WRITE), std::chrono::milliseconds(500));
     if (response == nullptr)
     {
         return false;
@@ -468,13 +470,87 @@ bool xbee_s1::enter_command_mode()
     return true;
 }
 
+// returns true if read was attempted, otherwise false
+bool xbee_s1::try_serial_read(std::function<void()> read_operation, const std::chrono::milliseconds &read_timeout,
+    const std::chrono::microseconds &initial_read_backoff)
+{
+    /*
+     * Ideally we'd check serial.available() once to see if there are bytes available to be read before incurring the potential read
+     * timeout cost of serial.read() when there aren't bytes available, but it seems available() has a bit of a delay.
+     *
+     * After some testing it looks like the average response for available() to reflect the presence of bytes on the serial line is 2ms
+     * and 3-4ms for available() to reflect the correct value. So far there hasn't been a case where calling serial.read(), after available()
+     * returned a non-zero value other than the full expected frame size, resulted in a failed frame read. Therefore we only wait until a
+     * presence of bytes is detected and then try to read a frame.
+     *
+     * An effort is made to reduce the amount of calls made to the serial interface as it seems that writing too many frames to the xbee
+     * can cause the device to lock up and stop responding in certain situations. So far it seems this lockup has only been triggered by
+     * repeated AT command frame writes and hasn't been reproducable by having two xbees constantly transmitting to each other.
+     *
+     * The only solution in the case of the xbee locking up seems to be removing and reinserting the USB to serial adapter or using the
+     * physical reset button if the adapter has one.
+     *
+     * TODO: ensure beehive can handle adapter being removed and reinserted
+     *  - expose state to indicate that device is no longer responding
+     */
+
+    auto backoff_duration = initial_read_backoff;
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    while (serial.available() == 0)
+    {
+        if (std::chrono::high_resolution_clock::now() - start_time >= read_timeout)
+        {
+            return false;
+        }
+
+        // TODO: bounded exponential backoff between calls? reset backoff duration upon successful frame read
+        std::this_thread::sleep_for(backoff_duration);
+        backoff_duration *= 2;
+    }
+
+    read_operation();
+    return true;
+}
+
+// returns true if write was attempted, otherwise false
+bool xbee_s1::try_serial_write(std::function<void()> write_operation)
+{
+    bool write_attempted = false;
+
+    util::retry([&]
+        {
+            if (serial.getCTS())
+            {
+                write_attempted = true;
+                write_operation();
+                return true;
+            }
+            else
+            {
+                std::this_thread::sleep_for(CTS_LOW_SLEEP);
+                return false;
+            }
+        }, CTS_LOW_RETRIES);
+
+    return write_attempted;
+}
+
 void xbee_s1::unlocked_write_string(const std::string &str)
 {
     size_t bytes_written;
 
     try
     {
-        bytes_written = serial.write(str);
+        auto write_operation = [&]
+            {
+                bytes_written = serial.write(str);
+            };
+
+        if (!try_serial_write(write_operation))
+        {
+            return;
+        }
     }
     catch (const serial::PortNotOpenedException &e)
     {
@@ -508,9 +584,10 @@ void xbee_s1::write_frame(const std::vector<uint8_t> &payload)
     unlocked_write_frame(payload);
 }
 
-std::shared_ptr<at_command_response_frame> xbee_s1::write_at_command_frame(std::shared_ptr<at_command_frame> command)
+std::shared_ptr<at_command_response_frame> xbee_s1::write_at_command_frame(std::shared_ptr<at_command_frame> command,
+    const std::chrono::milliseconds &read_timeout, const std::chrono::microseconds &initial_read_backoff)
 {
-    auto response = unlocked_write_and_read_frame(uart_frame(command));
+    auto response = unlocked_write_and_read_frame(uart_frame(command), read_timeout, initial_read_backoff);
     if (response == nullptr)
     {
         LOG_ERROR("could not read response to ", command->get_at_command(), " command, is API mode (1) enabled?");
@@ -534,7 +611,15 @@ std::string xbee_s1::unlocked_read_line()
 
     try
     {
-        bytes_read = serial.readline(result);
+        auto read_operation = [&]
+            {
+                bytes_read = serial.readline(result);
+            };
+
+        if (!try_serial_read(read_operation))
+        {
+            return std::string();
+        }
     }
     catch (const serial::PortNotOpenedException &e)
     {
@@ -575,21 +660,12 @@ void xbee_s1::unlocked_write_frame(const std::vector<uint8_t> &payload)
 
     try
     {
-        util::retry([&]
+        auto write_operation = [&]
             {
-                if (serial.getCTS())
-                {
-                    bytes_written = serial.write(payload);
-                    return true;
-                }
-                else
-                {
-                    std::this_thread::sleep_for(CTS_LOW_SLEEP);
-                    return false;
-                }
-            }, CTS_LOW_RETRIES);
+                bytes_written = serial.write(payload);
+            };
 
-        if (bytes_written == 0)
+        if (!try_serial_write(write_operation))
         {
             return;
         }
@@ -612,14 +688,20 @@ void xbee_s1::unlocked_write_frame(const std::vector<uint8_t> &payload)
 
     if (bytes_written != payload.size())
     {
-        LOG_ERROR("could not write frame (expected: ", payload.size(), ", wrote: ", bytes_written, " bytes)");
+        if (bytes_written != 0)
+        {
+            LOG_ERROR("could not write frame (expected: ", payload.size(), ", wrote: ", bytes_written, " bytes)");
+            return;
+        }
+
         return;
     }
 
     LOG("write [", util::get_frame_hex(payload), "] (", bytes_written, " bytes)");
 }
 
-std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
+std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame(const std::chrono::milliseconds &read_timeout,
+    const std::chrono::microseconds &initial_read_backoff)
 {
     static uint32_t invalid_frame_reads = 0;
 
@@ -629,43 +711,15 @@ std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
 
     try
     {
-        /*
-         * Ideally we'd check serial.available() once to see if there are bytes available to be read before incurring the potential read
-         * timeout cost of serial.read() when there aren't bytes available, but it seems available() has a bit of a delay.
-         *
-         * After some testing it looks like the average response for available() to reflect the presence of bytes on the serial line is 2ms
-         * and 3-4ms for available() to reflect the correct value. So far there hasn't been a case where calling serial.read(), after available()
-         * returned a non-zero value other than the full expected frame size, resulted in a failed frame read. Therefore we only wait until a
-         * presence of bytes is detected and then try to read a frame.
-         *
-         * An effort is made to reduce the amount of calls made to the serial interface as it seems that writing too many frames to the xbee
-         * can cause the device to lock up and stop responding in certain situations. So far it seems this lockup has only been triggered by
-         * repeated AT command frame writes and hasn't been reproducable by having two xbees constantly transmitting to each other.
-         *
-         * The only solution in the case of the xbee locking up seems to be removing and reinserting the USB to serial adapter or using the
-         * physical reset button if the adapter has one.
-         *
-         * TODO: ensure beehive can handle adapter being removed and reinserted
-         *  - expose state to indicate that device is no longer responding
-         */
-
-        size_t bytes_available = 0;
-        auto start_time = std::chrono::high_resolution_clock::now();
-        auto backoff_duration = SERIAL_READ_BACKOFF_SLEEP;
-
-        while ((bytes_available = serial.available()) == 0)
-        {
-            if (std::chrono::high_resolution_clock::now() - start_time >= SERIAL_READ_THRESHOLD)
+        auto read_operation = [&]
             {
-                return nullptr;
-            }
+                bytes_read_head = serial.read(frame, uart_frame::HEADER_LENGTH);
+            };
 
-            // TODO: bounded exponential backoff between calls? reset backoff duration upon successful frame read
-            std::this_thread::sleep_for(backoff_duration);
-            backoff_duration *= 2;
+        if (!try_serial_read(read_operation, read_timeout, initial_read_backoff))
+        {
+            return nullptr;
         }
-
-        bytes_read_head = serial.read(frame, uart_frame::HEADER_LENGTH);
     }
     catch (const serial::PortNotOpenedException &e)
     {
@@ -714,6 +768,7 @@ std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
 
     try
     {
+        // note: try_serial_read() helper not used here since we've already begun reading from the serial device
         bytes_read_tail = serial.read(frame, length + 1);    // payload + checksum
     }
     catch (const serial::PortNotOpenedException &e)
@@ -746,8 +801,9 @@ std::shared_ptr<uart_frame> xbee_s1::unlocked_read_frame()
     return uart_frame::parse_frame(frame.begin(), frame.end());
 }
 
-std::shared_ptr<uart_frame> xbee_s1::unlocked_write_and_read_frame(const std::vector<uint8_t> &payload)
+std::shared_ptr<uart_frame> xbee_s1::unlocked_write_and_read_frame(const std::vector<uint8_t> &payload,
+    const std::chrono::milliseconds &read_timeout, const std::chrono::microseconds &initial_read_backoff)
 {
     unlocked_write_frame(payload);
-    return unlocked_read_frame();
+    return unlocked_read_frame(read_timeout, initial_read_backoff);
 }

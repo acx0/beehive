@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cstdint>
 #include <exception>
+#include <functional>
 #include <iomanip>
 #include <map>
 #include <memory>
@@ -57,7 +58,9 @@ public:
     bool read_and_set_address();
     uint64_t get_address() const;
     void write_frame(const std::vector<uint8_t> &payload);
-    std::shared_ptr<at_command_response_frame> write_at_command_frame(std::shared_ptr<at_command_frame> command);
+    std::shared_ptr<at_command_response_frame> write_at_command_frame(std::shared_ptr<at_command_frame> command,
+        const std::chrono::milliseconds &read_timeout = SERIAL_READ_THRESHOLD,
+        const std::chrono::microseconds &initial_read_backoff = SERIAL_READ_BACKOFF_SLEEP);
     std::shared_ptr<uart_frame> read_frame();
     std::shared_ptr<uart_frame> write_and_read_frame(const std::vector<uint8_t> &payload);
     bool read_configuration_registers();
@@ -78,12 +81,19 @@ private:
     bool read_ieee_source_address(uint64_t &address);
     template <typename T>
         bool read_configuration_register(const std::string &at_command_str, const std::string &command_description, T &register_value);
+    bool try_serial_read(std::function<void()> read_operation, const std::chrono::milliseconds &read_timeout = SERIAL_READ_THRESHOLD,
+        const std::chrono::microseconds &initial_read_backoff = SERIAL_READ_BACKOFF_SLEEP);
+    bool try_serial_write(std::function<void()> write_operation);
 
     void unlocked_write_string(const std::string &str);
     std::string unlocked_read_line();
     void unlocked_write_frame(const std::vector<uint8_t> &payload);
-    std::shared_ptr<uart_frame> unlocked_read_frame();
-    std::shared_ptr<uart_frame> unlocked_write_and_read_frame(const std::vector<uint8_t> &payload);
+    std::shared_ptr<uart_frame> unlocked_read_frame(
+        const std::chrono::milliseconds &read_timeout = SERIAL_READ_THRESHOLD,
+        const std::chrono::microseconds &initial_read_backoff = SERIAL_READ_BACKOFF_SLEEP);
+    std::shared_ptr<uart_frame> unlocked_write_and_read_frame(const std::vector<uint8_t> &payload,
+        const std::chrono::milliseconds &read_timeout = SERIAL_READ_THRESHOLD,
+        const std::chrono::microseconds &initial_read_backoff = SERIAL_READ_BACKOFF_SLEEP);
 
     // note: although serial library employs its own line access protection, access_lock is used to ensure multi-frame read/write methods are atomic
     std::mutex access_lock;
