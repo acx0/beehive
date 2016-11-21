@@ -34,6 +34,8 @@ public:
     static const std::string DEFAULT_DEVICE;
     static const uint64_t ADDRESS_UNKNOWN;
     static const uint64_t BROADCAST_ADDRESS;
+    static const uint32_t FACTORY_DEFAULT_BAUD;
+    static const uint32_t MIN_BAUD_TWO_STOP_BITS;
     static const uint32_t DEFAULT_BAUD;
     static const uint32_t DEFAULT_SERIAL_TIMEOUT_MS;    // primarily controls how long a read in the underlying serial library will wait until it times out
     static const uint32_t DEFAULT_GUARD_TIME_S;
@@ -46,6 +48,7 @@ public:
     static const std::chrono::microseconds SERIAL_READ_BACKOFF_SLEEP;   // initial sleep duration when checking serial line for bytes available
     static const char *const COMMAND_SEQUENCE;
 
+    xbee_s1(const std::string &device);
     xbee_s1(const std::string &device, uint32_t baud);
     bool reset_firmware_settings();
     bool initialize();
@@ -60,9 +63,13 @@ public:
     bool read_configuration_registers();
 
 private:
+    static const std::map<uint8_t, uint32_t> baud_config_map;
+
+    void configure_stop_bits();
     bool test_at_command_mode();
     bool enable_api_mode();
     bool enable_64_bit_addressing();
+    bool restore_defaults();
     bool enable_strict_802_15_4_mode();
     bool configure_baud();
     bool write_to_non_volatile_memory();

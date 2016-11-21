@@ -3,9 +3,10 @@
 const std::string xbee_s1::DEFAULT_DEVICE = "/dev/ttyUSB0";
 const uint64_t xbee_s1::ADDRESS_UNKNOWN = 0xffffffffffffffff;
 const uint64_t xbee_s1::BROADCAST_ADDRESS = 0xffff;
+const uint32_t xbee_s1::FACTORY_DEFAULT_BAUD = 9600;
+const uint32_t xbee_s1::MIN_BAUD_TWO_STOP_BITS = 115200;
 const uint32_t xbee_s1::DEFAULT_BAUD = 9600;
-// setting timeout <= 525 seems to cause serial reads to sometimes return nothing on odroid
-const uint32_t xbee_s1::DEFAULT_SERIAL_TIMEOUT_MS = 1000;
+const uint32_t xbee_s1::DEFAULT_SERIAL_TIMEOUT_MS = 2000;
 const uint32_t xbee_s1::DEFAULT_GUARD_TIME_S = 1;
 const uint32_t xbee_s1::DEFAULT_COMMAND_MODE_TIMEOUT_S = 10;
 const uint32_t xbee_s1::CTS_LOW_RETRIES = 100;
@@ -16,6 +17,23 @@ const std::chrono::milliseconds xbee_s1::SERIAL_READ_THRESHOLD(10);
 const std::chrono::microseconds xbee_s1::SERIAL_READ_BACKOFF_SLEEP(100);
 const char *const xbee_s1::COMMAND_SEQUENCE = "+++";
 
+const std::map<uint8_t, uint32_t> xbee_s1::baud_config_map
+    {
+        { 0, 1200 },
+        { 1, 2400 },
+        { 2, 4800 },
+        { 3, 9600 },
+        { 4, 19200 },
+        { 5, 38400 },
+        { 6, 57600 },
+        { 7, 115200 }
+    };
+
+xbee_s1::xbee_s1(const std::string &device)
+    : xbee_s1(device, FACTORY_DEFAULT_BAUD)
+{
+}
+
 // TODO: check for exceptions when initializing serial object
 xbee_s1::xbee_s1(const std::string &device, uint32_t baud)
     : address(ADDRESS_UNKNOWN), serial(device, baud, serial::Timeout::simpleTimeout(DEFAULT_SERIAL_TIMEOUT_MS))
@@ -23,51 +41,67 @@ xbee_s1::xbee_s1(const std::string &device, uint32_t baud)
     LOG("using port: ", device, ", baud: ", baud);
 }
 
-// TODO: rewrite this method to bootstrap into API mode and then issue these commands... at mode too flaky...
 bool xbee_s1::reset_firmware_settings()
 {
     std::lock_guard<std::mutex> lock(access_lock);
-    if (!test_at_command_mode())
+
+    std::vector<uint32_t> baud_attempts;
+    for (auto &entry : baud_config_map)
+    {
+        // don't bother with lower/unused baud rates to save time
+        if (entry.second >= FACTORY_DEFAULT_BAUD)
+        {
+            baud_attempts.push_back(entry.second);
+        }
+    }
+
+    bool api_mode_configured = false;
+    for (auto &baud_attempt : baud_attempts)
+    {
+        LOG("attempting api mode configuration at ", baud_attempt, " baud");
+        serial.setBaudrate(baud_attempt);
+
+        // enable API mode for configuration since AT command mode can be flaky
+        if (enable_api_mode())
+        {
+            api_mode_configured = true;
+            break;
+        }
+
+        LOG_ERROR("connection attempt at ", baud_attempt, " baud failed");
+    }
+
+    if (!api_mode_configured)
     {
         return false;
     }
 
-    std::string response = execute_command(at_command(at_command::RESTORE_DEFAULTS));
-    if (response != at_command::RESPONSE_SUCCESS)
+    if (!restore_defaults())
     {
-        LOG_ERROR("firmware reset failed");
         return false;
     }
 
-    // note: once WR command is sent, no additional characters should be sent until after "OK" is received
-    // hence why we disable CN from being sent after WR is issued
-    response = execute_command(at_command(at_command::WRITE), false);
-    if (response != at_command::RESPONSE_SUCCESS)
+    serial.setBaudrate(FACTORY_DEFAULT_BAUD);
+
+    if (!enable_api_mode())
     {
-        LOG_ERROR("could not write to non-volatile memory, sleeping to prevent additional characters from being sent");
-        util::sleep(DEFAULT_COMMAND_MODE_TIMEOUT_S);
         return false;
     }
 
-    // explicitly exit command mode if write is successful
-    response = execute_command(at_command(at_command::EXIT_COMMAND_MODE), false);
-    if (response != at_command::RESPONSE_SUCCESS)
+    if (!write_to_non_volatile_memory())
     {
-        LOG_ERROR("could not exit command mode, sleeping for ", DEFAULT_COMMAND_MODE_TIMEOUT_S, "s");
-        util::sleep(DEFAULT_COMMAND_MODE_TIMEOUT_S);
+        return false;
     }
 
-    LOG("settings successfully written to non-volatile memory");
+    // note: we don't bother disabling api mode here
     return true;
 }
 
 bool xbee_s1::initialize()
 {
     std::lock_guard<std::mutex> lock(access_lock);
+    configure_stop_bits();
 
-    // TODO: check which bauds require two stop bits, set conditionally
-    // use two stop bits to increase success rate of frame reads/writes at higher baud
-    serial.setStopbits(serial::stopbits_two);
     if (read_and_set_address())
     {
         LOG("ieee source address: ", util::to_hex_string(address));
@@ -77,12 +111,22 @@ bool xbee_s1::initialize()
     return false;
 }
 
-// TODO: robust recovery -> not needed?, can instead have launcher take care of reset -> configure
 bool xbee_s1::configure_firmware_settings()
 {
     std::lock_guard<std::mutex> lock(access_lock);
-    return enable_api_mode() && enable_64_bit_addressing() && read_and_set_address()
-        && enable_strict_802_15_4_mode() && configure_baud() && write_to_non_volatile_memory();
+    configure_stop_bits();
+    return enable_api_mode() && enable_64_bit_addressing() && enable_strict_802_15_4_mode()
+        && configure_baud() && write_to_non_volatile_memory();
+}
+
+void xbee_s1::configure_stop_bits()
+{
+    // use two stop bits to increase success rate of frame reads/writes at higher baud
+    if (serial.getBaudrate() >= MIN_BAUD_TWO_STOP_BITS)
+    {
+        LOG("using two stop bits");
+        serial.setStopbits(serial::stopbits_two);
+    }
 }
 
 bool xbee_s1::test_at_command_mode()
@@ -105,7 +149,7 @@ bool xbee_s1::enable_api_mode()
     std::string response = execute_command(at_command(at_command::API_ENABLE, "1"));
     if (response != at_command::RESPONSE_SUCCESS)
     {
-        LOG_ERROR("could not enter api mode");
+        LOG_ERROR("could not configure api mode");
         return false;
     }
 
@@ -178,19 +222,6 @@ bool xbee_s1::read_configuration_register(const std::string &at_command_str, con
 
 bool xbee_s1::read_configuration_registers()
 {
-    // TODO: move outside method
-    std::map<uint32_t, std::string> baud_table
-        {
-            { 0, "1200" },
-            { 1, "2400" },
-            { 2, "4800" },
-            { 3, "9600" },
-            { 4, "19200" },
-            { 5, "38400" },
-            { 6, "57600" },
-            { 7, "115200" }
-        };
-
     // TODO: create global mapping of at_command_str -> command description
     uint64_t address;
     if (!read_ieee_source_address(address))
@@ -255,10 +286,10 @@ bool xbee_s1::read_configuration_registers()
     LOG("[ATSH+ATSL] ieee source address: ", util::to_hex_string(address));
     LOG("[ATAP] api mode: ", util::to_hex_string(api_mode));
     LOG("[ATMY] 16 bit source address: ", util::to_hex_string(address_16));
-    std::string baud_str = baud_table.count(baud)
-        ? baud_table[baud]
-        : std::to_string(baud);
-    LOG("[ATBD] interface data rate: ", util::to_hex_string(baud), " => ", baud_str, "b/s");
+    uint32_t baud_value = baud_config_map.find(baud) == baud_config_map.end()
+        ? baud
+        : baud_config_map.find(baud)->second;
+    LOG("[ATBD] interface data rate: ", util::to_hex_string(baud), " => ", baud_value, " b/s");
     LOG("[ATMM] mac mode: ", util::to_hex_string(mac_mode));
     LOG("[ATID] personal area network id: ", util::to_hex_string(pan_id));
     LOG("[ATCH] channel: ", util::to_hex_string(channel), " => TODO MHz");
@@ -266,6 +297,24 @@ bool xbee_s1::read_configuration_registers()
     LOG("[ATPL] power level: ", util::to_hex_string(power_level), " => TODO dBm");
     LOG("[ATCA] clear channel assessment threshold: ", util::to_hex_string(cca_threshold), " => TODO dBm");
 
+    return true;
+}
+
+bool xbee_s1::restore_defaults()
+{
+    auto response = write_at_command_frame(std::make_shared<at_command_frame>(at_command::RESTORE_DEFAULTS));
+    if (response == nullptr)
+    {
+        return false;
+    }
+
+    if (response->get_status() != at_command_response_frame::status::ok)
+    {
+        LOG_ERROR("could not restore configuration to factory default");
+        return false;
+    }
+
+    LOG("restored configuration to factory default");
     return true;
 }
 
@@ -290,9 +339,35 @@ bool xbee_s1::enable_strict_802_15_4_mode()
 
 bool xbee_s1::configure_baud()
 {
-    // 3 = 9600 bps
-    // 7 = 115200 bps
-    auto response = write_at_command_frame(std::make_shared<at_command_frame>(at_command::INTERFACE_DATA_RATE, std::vector<uint8_t>{ 0x07 }));
+    bool use_literal_baud = true;
+    uint32_t baud;
+    std::vector<uint8_t> baud_config_value;
+
+    for (auto &entry : baud_config_map)
+    {
+        if (entry.second == DEFAULT_BAUD)
+        {
+            use_literal_baud = false;
+            baud = entry.second;
+            baud_config_value.push_back(entry.first);
+            break;
+        }
+    }
+
+    if (use_literal_baud)
+    {
+        if (DEFAULT_BAUD <= baud_config_map.end()->second)
+        {
+            LOG_ERROR("literal baud value must be greater than ", +baud_config_map.end()->second);
+            return false;
+        }
+
+        // baud value is interpreted as actual baud rate
+        baud = DEFAULT_BAUD;
+        util::pack_value_as_bytes(std::back_inserter(baud_config_value), DEFAULT_BAUD);
+    }
+
+    auto response = write_at_command_frame(std::make_shared<at_command_frame>(at_command::INTERFACE_DATA_RATE, baud_config_value));
     if (response == nullptr)
     {
         return false;
@@ -306,7 +381,8 @@ bool xbee_s1::configure_baud()
     }
 
     // update serial object to interface at newly configured baud
-    serial.setBaudrate(115200);   // TODO: make const
+    serial.setBaudrate(baud);
+    configure_stop_bits();
     LOG("target baud successfully configured");
 
     return true;
@@ -322,7 +398,11 @@ bool xbee_s1::write_to_non_volatile_memory()
 
     if (response->get_status() != at_command_response_frame::status::ok)
     {
-        LOG_ERROR("could not write to non-volatile memory");
+        // note: documentation specifies that once WR command is sent, no additional characters should be sent until
+        // after "OK" is received (referring to response received in AT command mode) - we assume the same applies
+        // to a WR command issued as an AT command frame so a sleep is introduced after failure as a safegaurd
+        LOG_ERROR("could not write to non-volatile memory, sleeping to prevent additional characters from being sent");
+        util::sleep(DEFAULT_COMMAND_MODE_TIMEOUT_S);
         return false;
     }
 

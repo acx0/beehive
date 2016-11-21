@@ -2,7 +2,6 @@
 #include <fstream>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "beehive.h"
 #include "simulated_communication_endpoint.h"
@@ -134,20 +133,7 @@ int main(int argc, char *argv[])
     {
         if (reset)
         {
-            auto baud_attempts = std::vector<uint32_t>{ 9600, 115200 };
-
-            for (auto baud_attempt : baud_attempts)
-            {
-                // TODO: can expose set_baud so we don't have to create new object
-                if (xbee_s1(device, baud_attempt).reset_firmware_settings())
-                {
-                    return EXIT_SUCCESS;
-                }
-
-                LOG_ERROR("connection attempt at ", baud, " baud failed");
-            }
-
-            return EXIT_FAILURE;
+            return xbee_s1(device).reset_firmware_settings() ? EXIT_SUCCESS : EXIT_FAILURE;
         }
         else if (configure)
         {
