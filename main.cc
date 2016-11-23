@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 
+#include "beehive_config.h"
 #include "beehive.h"
 #include "simulated_communication_endpoint.h"
 #include "util.h"
@@ -21,6 +22,7 @@ int main(int argc, char *argv[])
 
     uint32_t baud = xbee_s1::DEFAULT_BAUD;
     std::string device = xbee_s1::DEFAULT_DEVICE;
+    beehive_config config;
 
     if (argc > 1)
     {
@@ -82,6 +84,17 @@ int main(int argc, char *argv[])
                     return EXIT_FAILURE;
                 }
 
+                ++i;
+            }
+            else if (std::string(argv[i]) == "--socket")
+            {
+                if (i + 1 == argc)
+                {
+                    LOG_ERROR("socket not supplied");
+                    return EXIT_FAILURE;
+                }
+
+                config = beehive_config(argv[i + 1]);
                 ++i;
             }
             else
@@ -163,7 +176,7 @@ int main(int argc, char *argv[])
                 endpoint = std::make_shared<xbee_communication_endpoint>(device, baud);
             }
 
-            beehive(endpoint).run();
+            beehive(config, endpoint).run();
         }
     }
     catch (const std::exception &e)

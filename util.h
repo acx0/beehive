@@ -24,11 +24,14 @@
 
 namespace util
 {
+    std::string prefix_null_terminator(const std::string &str);
     std::string get_escaped_string(const std::string &str);
     std::string strip_newline(const std::string &str);
     std::string get_frame_hex(const std::vector<uint8_t> &frame, bool show_prefix = false);
     void sleep(unsigned int seconds);   // TODO: use chrono?
+    int create_passive_abstract_domain_socket(const std::string &name, int type);
     int create_passive_domain_socket(const std::string &name, int type);
+    int create_active_abstract_domain_socket(const std::string &name, int type);
     int create_active_domain_socket(const std::string &name, int type);
     int accept_connection(int socket_fd);
     bool try_configure_nonblocking_receive_timeout(int socket_fd);

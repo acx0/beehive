@@ -7,6 +7,7 @@
 #include <string>
 #include <thread>
 
+#include "beehive_config.h"
 #include "beehive_message.h"
 #include "connection_tuple.h"
 #include "logger.h"
@@ -22,7 +23,7 @@
 class channel_manager
 {
 public:
-    channel_manager(std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue);
+    channel_manager(const beehive_config &config, std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue);
 
     void set_local_address(uint64_t address);
     // TODO: no point of returning bool here?
@@ -40,10 +41,10 @@ private:
     void payload_read_handler(int listen_socket_fd, connection_tuple connection_key);
     void payload_write_handler(int control_socket_fd, int listen_socket_fd, connection_tuple connection_key);
 
-    static const std::string CHANNEL_PATH_PREFIX;
     static uint32_t socket_suffix;
     static std::mutex socket_suffix_lock;
 
+    const std::string channel_path_prefix;
     uint64_t local_address;
     std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue;
     // TODO: separate segment maps for payload vs control segments?, separate state/connection management into separate class?

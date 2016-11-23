@@ -1,11 +1,10 @@
 #include "channel_manager.h"
 
-const std::string channel_manager::CHANNEL_PATH_PREFIX = std::string("\0beehive0_stream", 16);
 uint32_t channel_manager::socket_suffix = 0;
 std::mutex channel_manager::socket_suffix_lock;
 
-channel_manager::channel_manager(std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue)
-    : write_queue(write_queue)
+channel_manager::channel_manager(const beehive_config &config, std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue)
+    : channel_path_prefix(config.get_channel_path_prefix()), write_queue(write_queue)
 {
 }
 
@@ -133,9 +132,9 @@ void channel_manager::passive_socket_manager(int client_socket_fd, uint16_t list
             uint16_t source_port = client_info.second;
 
             LOG("received request on port ", +listen_port, " from (dest: ", util::to_hex_string(source_address), ", port: ", +source_port, ")");
-            std::string communication_socket_path = CHANNEL_PATH_PREFIX + "/" + util::to_hex_string(source_address) + "/" + std::to_string(source_port) + "/" + std::to_string(get_next_socket_suffix());
+            std::string communication_socket_path = channel_path_prefix + "/" + util::to_hex_string(source_address) + "/" + std::to_string(source_port) + "/" + std::to_string(get_next_socket_suffix());
 
-            int listen_socket_fd = util::create_passive_domain_socket(communication_socket_path, SOCK_STREAM);
+            int listen_socket_fd = util::create_passive_abstract_domain_socket(communication_socket_path, SOCK_STREAM);
             if (listen_socket_fd == -1)
             {
                 LOG("error creating communication socket");
@@ -195,8 +194,8 @@ void channel_manager::active_socket_manager(int control_socket_fd, uint64_t dest
         write_queue->push(std::make_shared<std::vector<uint8_t>>(frame));
     }
 
-    std::string communication_socket_path = CHANNEL_PATH_PREFIX + "/" + util::to_hex_string(destination_address) + "/" + std::to_string(destination_port) + "/" + std::to_string(get_next_socket_suffix());
-    int listen_socket_fd = util::create_passive_domain_socket(communication_socket_path, SOCK_STREAM);
+    std::string communication_socket_path = channel_path_prefix + "/" + util::to_hex_string(destination_address) + "/" + std::to_string(destination_port) + "/" + std::to_string(get_next_socket_suffix());
+    int listen_socket_fd = util::create_passive_abstract_domain_socket(communication_socket_path, SOCK_STREAM);
     if (listen_socket_fd == -1)
     {
         LOG_ERROR("error creating communication socket");

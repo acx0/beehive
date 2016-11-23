@@ -15,6 +15,7 @@
 
 #include <errno.h>
 
+#include "beehive_config.h"
 #include "beehive_message.h"
 #include "message_segment.h"
 #include "port_manager.h"
@@ -32,7 +33,7 @@ struct datagram_segment
 class datagram_socket_manager
 {
 public:
-    datagram_socket_manager(std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue);
+    datagram_socket_manager(const beehive_config &config, std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue);
 
     bool try_create_passive_socket(int control_socket_fd, uint16_t listen_port);
     bool try_create_active_socket(int control_socket_fd);
@@ -49,10 +50,10 @@ private:
 
     // TODO: defining locally for now since currently used for stack allocated buffer
     static const size_t MAX_MESSAGE_LENGTH;
-    static const std::string DGRAM_PATH_PREFIX;
     static uint32_t socket_suffix;
     static std::mutex socket_suffix_lock;
 
+    const std::string dgram_path_prefix;;
     std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue;
     threadsafe_unordered_map<uint16_t, std::shared_ptr<threadsafe_blocking_queue<datagram_segment>>> segment_queue_map;
     port_manager _port_manager;

@@ -1,5 +1,10 @@
 #include "util.h"
 
+std::string util::prefix_null_terminator(const std::string &str)
+{
+    return '\0' + str;
+}
+
 std::string util::get_escaped_string(const std::string &str)
 {
     std::ostringstream oss;
@@ -73,6 +78,12 @@ void util::sleep(unsigned int seconds)
     ::sleep(seconds);
 }
 
+// prefixed null terminator instructs socket to be created in abstract namespace (not mapped to filesystem)
+int util::create_passive_abstract_domain_socket(const std::string &name, int type)
+{
+    return create_passive_domain_socket(prefix_null_terminator(name), type);
+}
+
 int util::create_passive_domain_socket(const std::string &name, int type)
 {
     int socket_fd;
@@ -102,6 +113,11 @@ int util::create_passive_domain_socket(const std::string &name, int type)
     }
 
     return socket_fd;
+}
+
+int util::create_active_abstract_domain_socket(const std::string &name, int type)
+{
+    return create_active_domain_socket(prefix_null_terminator(name), type);
 }
 
 int util::create_active_domain_socket(const std::string &name, int type)

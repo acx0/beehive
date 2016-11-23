@@ -1,15 +1,9 @@
 #include "beehive.h"
 
-/*
- * specify length in ctor to prevent char * from being treated as null terminated C string
- *  - prefixed null terminator instructs socket to be created in abstract namespace (not mapped to filesystem)
- *  - suffix added to BEEHIVE_SOCKET_PATH to make testing multiple devices on same machine easier
- */
-const std::string beehive::BEEHIVE_SOCKET_PATH = std::string("\0beehive0", 9);
 const std::chrono::milliseconds beehive::WRITE_QUEUE_READ_TIMEOUT(5);
 
-beehive::beehive(std::shared_ptr<communication_endpoint> endpoint)
-    : endpoint(endpoint), frame_writer_queue(std::make_shared<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>>()), _channel_manager(frame_writer_queue), _datagram_socket_manager(frame_writer_queue)
+beehive::beehive(const beehive_config &config, std::shared_ptr<communication_endpoint> endpoint)
+    : socket_path(config.get_beehive_socket_path()), endpoint(endpoint), frame_writer_queue(std::make_shared<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>>()), _channel_manager(config, frame_writer_queue), _datagram_socket_manager(config, frame_writer_queue)
 {
 }
 
@@ -77,7 +71,7 @@ bool beehive::try_parse_port(int client_socket_fd, const std::string &str, uint1
 void beehive::request_handler()
 {
     LOG("starting request_handler thread");
-    int listen_socket_fd = util::create_passive_domain_socket(BEEHIVE_SOCKET_PATH, SOCK_STREAM);
+    int listen_socket_fd = util::create_passive_abstract_domain_socket(socket_path, SOCK_STREAM);
     if (listen_socket_fd == -1)
     {
         return;     // TODO: retries

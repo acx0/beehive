@@ -12,7 +12,7 @@ uint64_t simulated_communication_endpoint::get_random_address()
 simulated_communication_endpoint::simulated_communication_endpoint()
     : address(get_random_address())
 {
-    socket_fd = util::create_active_domain_socket(simulated_broadcast_medium::BROADCAST_SERVER_SOCKET_PATH, SOCK_SEQPACKET);
+    socket_fd = util::create_active_abstract_domain_socket(beehive_config::BROADCAST_SERVER_SOCKET_PATH, SOCK_SEQPACKET);
     if (socket_fd == -1)
     {
         // TODO

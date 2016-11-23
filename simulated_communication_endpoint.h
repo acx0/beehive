@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include "beehive_config.h"
 #include "communication_endpoint.h"
 #include "simulated_broadcast_medium.h"
 #include "uart_frame.h"

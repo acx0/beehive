@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include "beehive_config.h"
 #include "frame_data.h"
 #include "logger.h"
 #include "rx_packet_64_frame.h"
@@ -24,8 +25,6 @@ class simulated_broadcast_medium
 {
 public:
     static std::vector<uint8_t> read_frame(int socket_fd);
-
-    static const std::string BROADCAST_SERVER_SOCKET_PATH;
 
     bool start();
     void node_traffic_forwarder(uint64_t node_address, int node_socket_fd);

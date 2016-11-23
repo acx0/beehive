@@ -1,12 +1,11 @@
 #include "datagram_socket_manager.h"
 
 const size_t datagram_socket_manager::MAX_MESSAGE_LENGTH = 91;  // TODO: calculate this based on uart_frame::MAX_FRAME_SIZE (add this)
-const std::string datagram_socket_manager::DGRAM_PATH_PREFIX = std::string("\0beehive0_dgram", 15);
 uint32_t datagram_socket_manager::socket_suffix = 0;
 std::mutex datagram_socket_manager::socket_suffix_lock;
 
-datagram_socket_manager::datagram_socket_manager(std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue)
-    : write_queue(write_queue)
+datagram_socket_manager::datagram_socket_manager(const beehive_config &config, std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue)
+    : dgram_path_prefix(config.get_dgram_path_prefix()), write_queue(write_queue)
 {
 }
 
@@ -20,9 +19,9 @@ bool datagram_socket_manager::try_create_passive_socket(int control_socket_fd, u
     }
 
     auto segment_queue = segment_queue_map[listen_port] = std::make_shared<threadsafe_blocking_queue<datagram_segment>>();
-    std::string communication_socket_path = DGRAM_PATH_PREFIX + "/" + std::to_string(listen_port) + "/" + std::to_string(get_next_socket_suffix());
+    std::string communication_socket_path = dgram_path_prefix + "/" + std::to_string(listen_port) + "/" + std::to_string(get_next_socket_suffix());
 
-    int listen_socket_fd = util::create_passive_domain_socket(communication_socket_path, SOCK_SEQPACKET);
+    int listen_socket_fd = util::create_passive_abstract_domain_socket(communication_socket_path, SOCK_SEQPACKET);
     if (listen_socket_fd == -1)
     {
         destroy_socket(listen_port);
@@ -113,8 +112,8 @@ void datagram_socket_manager::active_socket_manager(int control_socket_fd)
     }
 
     auto segment_queue = segment_queue_map[source_port] = std::make_shared<threadsafe_blocking_queue<datagram_segment>>();
-    std::string communication_socket_path = DGRAM_PATH_PREFIX + "/" + std::to_string(source_port) + "/" + std::to_string(get_next_socket_suffix());
-    int listen_socket_fd = util::create_passive_domain_socket(communication_socket_path, SOCK_SEQPACKET);
+    std::string communication_socket_path = dgram_path_prefix + "/" + std::to_string(source_port) + "/" + std::to_string(get_next_socket_suffix());
+    int listen_socket_fd = util::create_passive_abstract_domain_socket(communication_socket_path, SOCK_SEQPACKET);
     if (listen_socket_fd == -1)
     {
         destroy_socket(source_port);    // TODO: can use RAII for this? create class for sock object

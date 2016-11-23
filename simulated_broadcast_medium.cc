@@ -1,7 +1,5 @@
 #include "simulated_broadcast_medium.h"
 
-const std::string simulated_broadcast_medium::BROADCAST_SERVER_SOCKET_PATH = std::string("\0beehive_simulated_wireless", 27);;
-
 // TODO: change signature to return failure status as bool and frame payload as out param? (0 sized payload is 'valid')
 std::vector<uint8_t> simulated_broadcast_medium::read_frame(int socket_fd)
 {
@@ -22,7 +20,7 @@ bool simulated_broadcast_medium::start()
 {
     LOG("starting broadcast server");
 
-    int listen_socket_fd = util::create_passive_domain_socket(BROADCAST_SERVER_SOCKET_PATH, SOCK_SEQPACKET);
+    int listen_socket_fd = util::create_passive_abstract_domain_socket(beehive_config::BROADCAST_SERVER_SOCKET_PATH, SOCK_SEQPACKET);
     if (listen_socket_fd == -1)
     {
         LOG_ERROR("broadcast server socket creation failed");
