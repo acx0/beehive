@@ -13,7 +13,8 @@ const uint32_t xbee_s1::CTS_LOW_RETRIES = 100;
 const uint32_t xbee_s1::MAX_INVALID_FRAME_READS = 20;
 const std::chrono::milliseconds xbee_s1::CTS_LOW_SLEEP(5);
 const std::chrono::milliseconds xbee_s1::INVALID_FRAME_READ_BACKOFF_SLEEP(200);
-const std::chrono::milliseconds xbee_s1::SERIAL_READ_THRESHOLD(10);
+const std::chrono::milliseconds xbee_s1::RX_PACKET_SERIAL_READ_THRESHOLD(10);
+const std::chrono::milliseconds xbee_s1::AT_COMMAND_RESPONSE_SERIAL_READ_THRESHOLD(50);
 const std::chrono::microseconds xbee_s1::SERIAL_READ_BACKOFF_SLEEP(100);
 const char *const xbee_s1::COMMAND_SEQUENCE = "+++";
 

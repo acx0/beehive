@@ -45,7 +45,8 @@ public:
     static const uint32_t MAX_INVALID_FRAME_READS;  // TODO: haven't pinpointed why this happens, but sleeping seems to 'fix' corrupt frame reads
     static const std::chrono::milliseconds CTS_LOW_SLEEP;   // how long to sleep when CTS is low
     static const std::chrono::milliseconds INVALID_FRAME_READ_BACKOFF_SLEEP;    // how long to backoff for if MAX_INVALID_FRAME_READS is hit
-    static const std::chrono::milliseconds SERIAL_READ_THRESHOLD;   // max duration to wait when reading from serial line
+    static const std::chrono::milliseconds RX_PACKET_SERIAL_READ_THRESHOLD;     // max duration to poll when checking for a single rx packet
+    static const std::chrono::milliseconds AT_COMMAND_RESPONSE_SERIAL_READ_THRESHOLD;   // at commands can have a larger delay between request and response frames
     static const std::chrono::microseconds SERIAL_READ_BACKOFF_SLEEP;   // initial sleep duration when checking serial line for bytes available
     static const char *const COMMAND_SEQUENCE;
 
@@ -59,7 +60,7 @@ public:
     uint64_t get_address() const;
     void write_frame(const std::vector<uint8_t> &payload);
     std::shared_ptr<at_command_response_frame> write_at_command_frame(std::shared_ptr<at_command_frame> command,
-        const std::chrono::milliseconds &read_timeout = SERIAL_READ_THRESHOLD,
+        const std::chrono::milliseconds &read_timeout = AT_COMMAND_RESPONSE_SERIAL_READ_THRESHOLD,
         const std::chrono::microseconds &initial_read_backoff = SERIAL_READ_BACKOFF_SLEEP);
     std::shared_ptr<uart_frame> read_frame();
     std::shared_ptr<uart_frame> write_and_read_frame(const std::vector<uint8_t> &payload);
@@ -81,7 +82,7 @@ private:
     bool read_ieee_source_address(uint64_t &address);
     template <typename T>
         bool read_configuration_register(const std::string &at_command_str, const std::string &command_description, T &register_value);
-    bool try_serial_read(std::function<void()> read_operation, const std::chrono::milliseconds &read_timeout = SERIAL_READ_THRESHOLD,
+    bool try_serial_read(std::function<void()> read_operation, const std::chrono::milliseconds &read_timeout = RX_PACKET_SERIAL_READ_THRESHOLD,
         const std::chrono::microseconds &initial_read_backoff = SERIAL_READ_BACKOFF_SLEEP);
     bool try_serial_write(std::function<void()> write_operation);
 
@@ -89,10 +90,10 @@ private:
     std::string unlocked_read_line();
     void unlocked_write_frame(const std::vector<uint8_t> &payload);
     std::shared_ptr<uart_frame> unlocked_read_frame(
-        const std::chrono::milliseconds &read_timeout = SERIAL_READ_THRESHOLD,
+        const std::chrono::milliseconds &read_timeout = RX_PACKET_SERIAL_READ_THRESHOLD,
         const std::chrono::microseconds &initial_read_backoff = SERIAL_READ_BACKOFF_SLEEP);
     std::shared_ptr<uart_frame> unlocked_write_and_read_frame(const std::vector<uint8_t> &payload,
-        const std::chrono::milliseconds &read_timeout = SERIAL_READ_THRESHOLD,
+        const std::chrono::milliseconds &read_timeout = RX_PACKET_SERIAL_READ_THRESHOLD,
         const std::chrono::microseconds &initial_read_backoff = SERIAL_READ_BACKOFF_SLEEP);
 
     // note: although serial library employs its own line access protection, access_lock is used to ensure multi-frame read/write methods are atomic
