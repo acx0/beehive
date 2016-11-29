@@ -1,10 +1,10 @@
 #include "beehive_config.h"
 
-const std::string beehive_config::DEFAULT_BEEHIVE_SOCKET_PATH = "beehive0";
+const std::string beehive_config::BEEHIVE_SOCKET_PATH_PREFIX = "beehive";
 const std::string beehive_config::BROADCAST_SERVER_SOCKET_PATH = "beehive_simulated_wireless";
 
 beehive_config::beehive_config()
-    : beehive_socket_path(DEFAULT_BEEHIVE_SOCKET_PATH)
+    : beehive_socket_path(BEEHIVE_SOCKET_PATH_PREFIX)
 {
 }
 

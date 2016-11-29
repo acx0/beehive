@@ -6,7 +6,7 @@
 class beehive_config
 {
 public:
-    static const std::string DEFAULT_BEEHIVE_SOCKET_PATH;
+    static const std::string BEEHIVE_SOCKET_PATH_PREFIX;
     static const std::string BROADCAST_SERVER_SOCKET_PATH;
 
     beehive_config();

@@ -5,6 +5,7 @@
 
 #include "beehive_config.h"
 #include "beehive.h"
+#include "logger.h"
 #include "simulated_communication_endpoint.h"
 #include "util.h"
 #include "xbee_communication_endpoint.h"
@@ -19,89 +20,88 @@ int main(int argc, char *argv[])
     bool simulate_wireless = false;
     bool test_xbee = false;
     bool read_xbee_config = false;
+    bool custom_socket_path = false;
 
     uint32_t baud = xbee_s1::DEFAULT_BAUD;
     std::string device = xbee_s1::DEFAULT_DEVICE;
     beehive_config config;
 
-    if (argc > 1)
+    for (int i = 1; i < argc; ++i)
     {
-        for (int i = 1; i < argc; ++i)
+        if (std::string(argv[i]) == "--configure")
         {
-            if (std::string(argv[i]) == "--configure")
+            configure = true;
+        }
+        else if (std::string(argv[i]) == "--reset")
+        {
+            reset = true;
+        }
+        else if (std::string(argv[i]) == "--simulate-xbee")
+        {
+            simulate_xbee = true;
+        }
+        else if (std::string(argv[i]) == "--simulate-wireless")
+        {
+            simulate_wireless = true;
+        }
+        else if (std::string(argv[i]) == "--test-xbee")
+        {
+            test_xbee = true;
+        }
+        else if (std::string(argv[i]) == "--read-xbee-config")
+        {
+            read_xbee_config = true;
+        }
+        else if (std::string(argv[i]) == "--baud")
+        {
+            if (i + 1 == argc)
             {
-                configure = true;
-            }
-            else if (std::string(argv[i]) == "--reset")
-            {
-                reset = true;
-            }
-            else if (std::string(argv[i]) == "--simulate-xbee")
-            {
-                simulate_xbee = true;
-            }
-            else if (std::string(argv[i]) == "--simulate-wireless")
-            {
-                simulate_wireless = true;
-            }
-            else if (std::string(argv[i]) == "--test-xbee")
-            {
-                test_xbee = true;
-            }
-            else if (std::string(argv[i]) == "--read-xbee-config")
-            {
-                read_xbee_config = true;
-            }
-            else if (std::string(argv[i]) == "--baud")
-            {
-                if (i + 1 == argc)
-                {
-                    LOG_ERROR("baud not supplied");
-                    return EXIT_FAILURE;
-                }
-
-                if (!util::try_parse_uint32_t(argv[i + 1], baud))
-                {
-                    LOG_ERROR("failed to parse baud: ", argv[i + 1]);
-                    return EXIT_FAILURE;
-                }
-
-                ++i;
-            }
-            else if (std::string(argv[i]) == "--device")
-            {
-                if (i + 1 == argc)
-                {
-                    LOG_ERROR("device not supplied");
-                    return EXIT_FAILURE;
-                }
-
-                device = argv[i + 1];
-                std::ifstream serial_device(device.c_str());
-                if (!serial_device)
-                {
-                    LOG("serial device not readable");
-                    return EXIT_FAILURE;
-                }
-
-                ++i;
-            }
-            else if (std::string(argv[i]) == "--socket")
-            {
-                if (i + 1 == argc)
-                {
-                    LOG_ERROR("socket not supplied");
-                    return EXIT_FAILURE;
-                }
-
-                config = beehive_config(argv[i + 1]);
-                ++i;
-            }
-            else
-            {
-                LOG_ERROR("invalid argument: ", argv[i]);
+                LOG_ERROR("baud not supplied");
                 return EXIT_FAILURE;
             }
+
+            if (!util::try_parse_uint32_t(argv[i + 1], baud))
+            {
+                LOG_ERROR("failed to parse baud: ", argv[i + 1]);
+                return EXIT_FAILURE;
+            }
+
+            ++i;
+        }
+        else if (std::string(argv[i]) == "--device")
+        {
+            if (i + 1 == argc)
+            {
+                LOG_ERROR("device not supplied");
+                return EXIT_FAILURE;
+            }
+
+            device = argv[i + 1];
+            std::ifstream serial_device(device.c_str());
+            if (!serial_device)
+            {
+                LOG("serial device not readable");
+                return EXIT_FAILURE;
+            }
+
+            ++i;
+        }
+        else if (std::string(argv[i]) == "--socket")
+        {
+            if (i + 1 == argc)
+            {
+                LOG_ERROR("socket not supplied");
+                return EXIT_FAILURE;
+            }
+
+            custom_socket_path = true;
+            config = beehive_config(argv[i + 1]);
+            ++i;
+        }
+        else
+        {
+            LOG_ERROR("invalid argument: ", argv[i]);
+            return EXIT_FAILURE;
         }
     }
 
@@ -174,6 +174,12 @@ int main(int argc, char *argv[])
             else
             {
                 endpoint = std::make_shared<xbee_communication_endpoint>(device, baud);
+            }
+
+            // ensure uniqueness of socket paths when testing multiple devices on a single machine
+            if (!custom_socket_path)
+            {
+                config = beehive_config(beehive_config::BEEHIVE_SOCKET_PATH_PREFIX + util::to_hex_string(endpoint->get_address()));
             }
 
             beehive(config, endpoint).run();
