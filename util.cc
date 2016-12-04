@@ -152,7 +152,7 @@ int util::accept_connection(int socket_fd)
     LOG(socket_fd, ": waiting for accept request");
     if ((request_socket_fd = accept(socket_fd, (sockaddr *)&request_socket, &length)) == -1)
     {
-        perror("accept");
+        perror("accept");   // TODO: use logger
         return -1;
     }
 
@@ -160,7 +160,7 @@ int util::accept_connection(int socket_fd)
     return request_socket_fd;
 }
 
-// TODO: make timeout configurable
+// TODO: make timeout configurable -> in beehive_config
 bool util::try_configure_nonblocking_receive_timeout(int socket_fd)
 {
     timeval tv;
@@ -204,4 +204,35 @@ bool util::try_parse_uint32_t(const std::string &str, uint32_t &out)
     iss >> out;
 
     return static_cast<bool>(iss);
+}
+
+// TODO: merge all socket code into util methods and verify return status of send/recv calls to ensure no data loss
+ssize_t util::nonblocking_recv(int socket_fd, std::vector<uint8_t> &buffer, size_t buffer_length, int &error)
+{
+    if (buffer_length == 0)
+    {
+        return -1;
+    }
+
+    buffer.resize(buffer_length);
+    ssize_t bytes_read = recv(socket_fd, buffer.data(), buffer.size(), MSG_DONTWAIT);
+    error = errno;
+
+    if (bytes_read == 0)
+    {
+        LOG_ERROR("client connection closed");
+        return 0;
+    }
+    else if (bytes_read == -1)
+    {
+        if (error != EAGAIN)
+        {
+            perror("recv");     // TODO: get string and use LOG_ERROR()
+        }
+
+        return -1;
+    }
+
+    buffer.resize(bytes_read);
+    return bytes_read;
 }

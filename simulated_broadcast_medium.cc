@@ -4,7 +4,7 @@
 std::vector<uint8_t> simulated_broadcast_medium::read_frame(int socket_fd)
 {
     std::vector<uint8_t> buffer(uart_frame::MAX_FRAME_SIZE);
-    ssize_t bytes_read = recv(socket_fd, buffer.data(), buffer.size(), 0);
+    ssize_t bytes_read = recv(socket_fd, buffer.data(), buffer.size(), 0);      // TODO: refactor into util::recv
 
     if (bytes_read <= 0)
     {
@@ -48,7 +48,7 @@ bool simulated_broadcast_medium::start()
         uint64_t address = util::unpack_bytes_to_width<uint64_t>(frame.begin());
         node_sockets[address] = client_socket_fd;
 
-        LOG("client ", address, " connected");
+        LOG("client ", util::to_hex_string(address), " connected");
 
         std::thread traffic_forwarder(&simulated_broadcast_medium::node_traffic_forwarder, this, address, client_socket_fd);
         traffic_forwarder.detach();
@@ -84,7 +84,7 @@ void simulated_broadcast_medium::node_traffic_forwarder(uint64_t node_address, i
                 {
                     if (entry.first != node_address)
                     {
-                        send(entry.second, payload.data(), payload.size(), 0);
+                        send(entry.second, payload.data(), payload.size(), 0);  // TODO: util::send
                     }
                 }
             }
@@ -96,7 +96,7 @@ void simulated_broadcast_medium::node_traffic_forwarder(uint64_t node_address, i
                     continue;
                 }
 
-                send(destination_node_socket_fd, payload.data(), payload.size(), 0);
+                send(destination_node_socket_fd, payload.data(), payload.size(), 0);    // TODO: util::send
             }
         }
         else

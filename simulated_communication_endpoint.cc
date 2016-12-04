@@ -36,9 +36,29 @@ void simulated_communication_endpoint::transmit_frame(const std::vector<uint8_t>
     send(socket_fd, payload.data(), payload.size(), 0);
 }
 
+// TODO: change signature to return failure status as bool and frame payload as out param? (0 sized payload is 'valid')
 std::shared_ptr<uart_frame> simulated_communication_endpoint::receive_frame()
 {
-    std::vector<uint8_t> buffer = simulated_broadcast_medium::read_frame(socket_fd);
+    int error;
+    std::vector<uint8_t> buffer;
+    ssize_t bytes_read = util::nonblocking_recv(socket_fd, buffer, uart_frame::MAX_FRAME_SIZE, error);
+
+    if (bytes_read == 0)
+    {
+        // TODO: this should be fatal error/cause exit?
+        return nullptr;
+    }
+    else if (bytes_read == -1)
+    {
+        if (error == EAGAIN)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(25)); // TODO: make configurable in beehive_config?
+            return nullptr;
+        }
+
+        return nullptr; // TODO: fatal
+    }
+
     LOG("sim_read:  [", util::get_frame_hex(buffer), "]");
 
     std::shared_ptr<uart_frame> frame = uart_frame::parse_frame(buffer.begin(), buffer.end());

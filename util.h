@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
+#include <errno.h>
 #include <unistd.h>
 
 #include "logger.h"
@@ -38,6 +39,7 @@ namespace util
     std::vector<std::string> split(const std::string &str, const std::string &separator);
     bool retry(std::function<bool()> function, uint32_t retries);
     bool try_parse_uint32_t(const std::string &str, uint32_t &out);
+    ssize_t nonblocking_recv(int socket_fd, std::vector<uint8_t> &buffer, size_t buffer_length, int &error);
 
     // unpack byte vector of size n into single value of width n bytes, MSB first, n = sizeof(T)
     template <typename T, typename Iterator>

@@ -193,32 +193,26 @@ void datagram_socket_manager::payload_write_handler(int communication_socket_fd,
 {
     while (*running)
     {
-        // TODO: rewrite as util method
-        // TODO: change all char[] to uint8_t[]
-        //      iterator version of unpack_bytes_to_width was failing because buffer was defined as char[] instead of uint8_t[], causing 0xff to be interpreted as -1 instead of 255
         // TODO: configure nonblocking socket or use MSG_DONTWAIT?
-        // TODO: heap alloc
-        uint8_t buffer[MAX_MESSAGE_LENGTH + sizeof(uint64_t) + sizeof(uint16_t)];    // TODO: make const
-        ssize_t bytes_read = recv(communication_socket_fd, buffer, sizeof(buffer), MSG_DONTWAIT);
-        auto error = errno;
+        int error;
+        std::vector<uint8_t> buffer;
+        ssize_t bytes_read = util::nonblocking_recv(communication_socket_fd, buffer, sizeof(uint64_t) + sizeof(uint16_t) + MAX_MESSAGE_LENGTH, error);
 
         if (bytes_read == 0)
         {
-            LOG_ERROR("client connection closed");
             break;
         }
         else if (bytes_read == -1)
         {
             if (error == EAGAIN)
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(25));
+                std::this_thread::sleep_for(std::chrono::milliseconds(25)); // TODO: add to beehive_config?
                 continue;
             }
 
-            perror("recv");     // TODO: get string and use LOG_ERROR()
             break;
         }
-        else if (bytes_read < sizeof(uint64_t) + sizeof(uint16_t))
+        else if (static_cast<uint64_t>(bytes_read) < sizeof(uint64_t) + sizeof(uint16_t))
         {
             continue;
         }

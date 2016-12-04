@@ -297,7 +297,7 @@ void beehive::process_neighbour_discovery_message(uint64_t source_address, std::
     }
     else if (segment->is_ack())
     {
-        LOG("discovered neighbour: ", source_address);
+        LOG("discovered neighbour: ", util::to_hex_string(source_address));
         neighbours[source_address] = neighbour_info{source_address, std::chrono::system_clock::now()};
     }
 }

@@ -122,7 +122,7 @@ private:
         }
     }
 
-    void retransmitter(const boost::system::error_code &e, boost::asio::deadline_timer *timer)
+    void retransmitter(const boost::system::error_code &/*e*/, boost::asio::deadline_timer *timer)
     {
         retransmit_timed_out_unacked_segments();
 
