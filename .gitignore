@@ -1,4 +1,6 @@
+*.a
 *.d
 *.o
 *.swp
 beehive
+beehive-tests

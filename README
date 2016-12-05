@@ -1,0 +1,15 @@
+dependencies:
+    github.com/wjwwood/serial
+    boost
+    google test
+
+dependency installation (debian testing):
+    $ sudo aptitude install libboost-all-dev catkin googletest
+    $ pushd "$(mktemp -d)"
+    $ git clone https://github.com/wjwwood/serial.git
+    $ cd serial
+    $ make install      # installs to /tmp/usr/local, copy from there
+    $ popd
+    $ sudo cp -r /tmp/usr/local/include/serial /usr/local/include
+    $ sudo cp /tmp/usr/local/lib/libserial.so /usr/local/lib
+    $ sudo usermod -a -G dialout $(whoami)      # to access /dev/ttyUSB*, requires logout to take effect
