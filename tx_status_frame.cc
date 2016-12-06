@@ -4,7 +4,7 @@ const size_t tx_status_frame::MIN_FRAME_DATA_LENGTH = sizeof(api_identifier_valu
 
 std::shared_ptr<tx_status_frame> tx_status_frame::parse_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end)
 {
-    if (end - begin < MIN_FRAME_DATA_LENGTH)
+    if (static_cast<size_t>(std::distance(begin, end)) < MIN_FRAME_DATA_LENGTH)
     {
         return nullptr;
     }

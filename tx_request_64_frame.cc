@@ -5,7 +5,8 @@ const size_t tx_request_64_frame::MIN_FRAME_DATA_LENGTH = sizeof(api_identifier)
 
 std::shared_ptr<tx_request_64_frame> tx_request_64_frame::parse_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end)
 {
-    if (end - begin < MIN_FRAME_DATA_LENGTH)
+    auto size = static_cast<size_t>(std::distance(begin, end));
+    if (size < MIN_FRAME_DATA_LENGTH)
     {
         return nullptr;
     }
@@ -22,7 +23,7 @@ std::shared_ptr<tx_request_64_frame> tx_request_64_frame::parse_frame(std::vecto
     uint8_t options_value = begin[10];
     std::vector<uint8_t> rf_data;
 
-    if (end - begin > MIN_FRAME_DATA_LENGTH)
+    if (size > MIN_FRAME_DATA_LENGTH)
     {
         rf_data = std::vector<uint8_t>(begin + MIN_FRAME_DATA_LENGTH, end);
     }

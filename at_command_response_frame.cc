@@ -5,7 +5,8 @@ const size_t at_command_response_frame::MIN_FRAME_DATA_LENGTH = sizeof(api_ident
 
 std::shared_ptr<at_command_response_frame> at_command_response_frame::parse_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end)
 {
-    if (end - begin < MIN_FRAME_DATA_LENGTH)
+    auto size = static_cast<size_t>(std::distance(begin, end));
+    if (size < MIN_FRAME_DATA_LENGTH)
     {
         return nullptr;
     }
@@ -20,7 +21,7 @@ std::shared_ptr<at_command_response_frame> at_command_response_frame::parse_fram
     uint8_t status_value = begin[4];
     std::vector<uint8_t> value;
 
-    if (end - begin > MIN_FRAME_DATA_LENGTH)
+    if (size > MIN_FRAME_DATA_LENGTH)
     {
         value = std::vector<uint8_t>(begin + MIN_FRAME_DATA_LENGTH, end);
     }

@@ -15,7 +15,8 @@ const size_t uart_frame::API_IDENTIFIER_OFFSET = 3;
 
 std::shared_ptr<uart_frame> uart_frame::parse_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end)
 {
-    if (end - begin < MIN_FRAME_SIZE || end - begin > MAX_FRAME_SIZE)
+    auto size = static_cast<size_t>(std::distance(begin, end));
+    if (size < MIN_FRAME_SIZE || size > MAX_FRAME_SIZE)
     {
         return nullptr;
     }
