@@ -9,11 +9,13 @@ GTEST_DIR = /usr/src/googletest/googletest
 GTEST_AR = gtest.a gtest_main.a
 GTEST_OBJ = gtest-all.o gtest_main.o
 
-SRC = $(wildcard *.cc)
-OBJ = $(SRC:%.cc=%.o)
+ALL_SRC = $(wildcard *.cc)
+TEST_SRC = $(wildcard *_test.cc)
+BIN_SRC = $(filter-out $(TEST_SRC), $(ALL_SRC))
+BIN_OBJ = $(BIN_SRC:%.cc=%.o)
+TEST_OBJ = $(TEST_SRC:%.cc=%.o)
+TEST_DEP_OBJ = $(filter-out main.o, $(BIN_OBJ))
 BIN = beehive
-BIN_OBJ = $(filter-out tests.o, $(OBJ))
-TEST_OBJ = $(filter-out main.o, $(OBJ))
 TEST_BIN = beehive-tests
 
 $(BIN): $(BIN_OBJ)
@@ -22,8 +24,8 @@ $(BIN): $(BIN_OBJ)
 test: $(TEST_BIN)
 	./$(TEST_BIN) $(GTEST_FLAGS) $(ARGS)
 
-$(TEST_BIN): $(TEST_OBJ) $(GTEST_AR)
-	$(CXX) -o $@ $(TEST_OBJ) gtest_main.a $(LDFLAGS)
+$(TEST_BIN): $(TEST_DEP_OBJ) $(TEST_OBJ) $(GTEST_AR)
+	$(CXX) -o $@ $(TEST_DEP_OBJ) $(TEST_OBJ) gtest_main.a $(LDFLAGS)
 
 gtest.a: gtest-all.o
 	$(AR) $(ARFLAGS) $@ $^
@@ -44,7 +46,7 @@ run: $(BIN)
 	LD_LIBRARY_PATH=/usr/local/lib ./$(BIN) $(ARGS)
 
 clean:
-	rm -f $(BIN) $(OBJ) *.d $(TEST_BIN) $(GTEST_AR) $(GTEST_OBJ)
+	rm -f $(BIN) $(BIN_OBJ) *.d $(TEST_BIN) $(TEST_OBJ) $(GTEST_AR) $(GTEST_OBJ)
 
 .PHONY: clean run test
 
