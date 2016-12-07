@@ -1,7 +1,7 @@
 # CXX = g++
 CXX = clang++
 CXXFLAGS += -std=c++11 -Wall -Wextra #-fsanitize=undefined #-g #-Wconversion
-CPPFLAGS += -MMD -MP -D LOGGING_ENABLED -isystem $(GTEST_DIR)/include
+CPPFLAGS += -MMD -MP -D STDIO_LOGGING_ENABLED -isystem $(GTEST_DIR)/include
 LDFLAGS += -lserial -lboost_system -pthread
 
 GTEST_FLAGS = --gtest_color=yes
