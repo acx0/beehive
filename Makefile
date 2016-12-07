@@ -12,9 +12,11 @@ GTEST_OBJ = gtest-all.o gtest_main.o
 ALL_SRC = $(wildcard *.cc)
 TEST_SRC = $(wildcard *_test.cc)
 BIN_SRC = $(filter-out $(TEST_SRC), $(ALL_SRC))
+
 BIN_OBJ = $(BIN_SRC:%.cc=%.o)
 TEST_OBJ = $(TEST_SRC:%.cc=%.o)
 TEST_DEP_OBJ = $(filter-out main.o, $(BIN_OBJ))
+
 BIN = beehive
 TEST_BIN = beehive-tests
 
@@ -50,4 +52,4 @@ clean:
 
 .PHONY: clean run test
 
--include $(SRC:%.cc=%.d)
+-include $(ALL_SRC:%.cc=%.d)
