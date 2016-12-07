@@ -36,9 +36,8 @@ public:
 class std_log_policy : public log_policy_interface
 {
 public:
-    void open_ostream(const std::string &name) override
+    void open_ostream(const std::string &/*name*/) override
     {
-        static_cast<void>(name);
     }
 
     void close_ostream() override
@@ -78,7 +77,7 @@ public:
 
     void write(const std::string &str) override
     {
-        (*output_stream) << str << std::endl;
+        *output_stream << str << std::endl;
     }
 
     ~file_log_policy()
@@ -103,9 +102,8 @@ public:
     }
 
     logger(const std::string &name)
+        : policy(new Policy)
     {
-        policy = new Policy;
-
         if (policy == nullptr)
         {
             throw std::runtime_error("logger: unable to create the logger instance");
@@ -136,37 +134,50 @@ public:
 
     ~logger()
     {
-        if (policy)
+        if (policy != nullptr)
         {
             policy->close_ostream();
-            delete policy;
         }
     }
 
 private:
-    std::string get_time()
+    const std::string get_time() const
     {
         time_t raw_time;
-        if (time(&raw_time) != static_cast<time_t>(-1))
+        if (time(&raw_time) == static_cast<time_t>(-1))
         {
-            std::string time_str = ctime(&raw_time);
-            return time_str.substr(0, time_str.size() - 1); // strip newline
+            return UNKNOWN;
         }
-        else
+
+        char *time_cstr = ctime(&raw_time);
+        if (time_cstr == nullptr)
         {
-            return "UNKNOWN";
+            return UNKNOWN;
         }
+
+        std::string time_str(time_cstr);
+        time_str[time_str.size() - 1] = '\0';   // erase newline
+        return time_str;
     }
 
-    std::string get_logline_header()
+    const std::string get_logline_header() const
     {
-        std::stringstream header;
-
+        std::ostringstream header;
         header << "[" << get_time() << " - ";
         header.fill('0');
         header.width(7);
-        header << clock() << "] ~ ";
 
+        time_t cpu_time = clock();
+        if (cpu_time != static_cast<time_t>(-1))
+        {
+            header << cpu_time;
+        }
+        else
+        {
+            header << UNKNOWN;
+        }
+
+        header << "] ~ ";
         return header.str();
     }
 
@@ -183,15 +194,19 @@ private:
         print_impl(rest...);
     }
 
+    const std::string UNKNOWN = "UNKNOWN";
     std::mutex write_lock;
-    std::stringstream log_stream;
-    Policy *policy;
+    std::ostringstream log_stream;
+    std::unique_ptr<Policy> policy;
 };
 
-// static logger<file_log_policy> _logger("execution.log");
+#ifdef STDIO_LOGGING_ENABLED
 static logger<std_log_policy> _logger;
+#elif FILE_LOGGING_ENABLED
+static logger<file_log_policy> _logger("execution.log");
+#endif
 
-#ifdef LOGGING_ENABLED
+#if defined(STDIO_LOGGING_ENABLED) || defined(FILE_LOGGING_ENABLED)
 #define LOG _logger.print<severity_type::debug>
 #define LOG_ERROR _logger.print<severity_type::error>
 #define LOG_WARNING _logger.print<severity_type::warning>
