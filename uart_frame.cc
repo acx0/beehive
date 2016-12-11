@@ -5,6 +5,7 @@ const uint8_t uart_frame::ESCAPE = 0x7d;
 const uint8_t uart_frame::XON = 0x11;
 const uint8_t uart_frame::XOFF = 0x13;
 const uint8_t uart_frame::XOR_CONST = 0x20;
+const uint8_t uart_frame::CHECKSUM_TARGET = 0xff;
 const size_t uart_frame::HEADER_LENGTH = 3; // delimiter + 2 length bytes
 const size_t uart_frame::MIN_FRAME_SIZE = HEADER_LENGTH + 2;    // (header + api_identifier + checksum) TODO: actually larger than this, depending on smallest valid api frame
 const size_t uart_frame::MAX_FRAME_SIZE = 115;  // max size seen so far: 115 byte tx_request_64 frame (100 byte payload) -> 115 byte rx_packet_64 frame
@@ -12,11 +13,22 @@ const size_t uart_frame::FRAME_DELIMITER_OFFSET = 0;
 const size_t uart_frame::LENGTH_MSB_OFFSET = 1;
 const size_t uart_frame::LENGTH_LSB_OFFSET = 2;
 const size_t uart_frame::API_IDENTIFIER_OFFSET = 3;
+const size_t uart_frame::IDENTIFIER_DATA_OFFSET = 4;
 
 std::shared_ptr<uart_frame> uart_frame::parse_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end)
 {
     auto size = static_cast<size_t>(std::distance(begin, end));
     if (size < MIN_FRAME_SIZE || size > MAX_FRAME_SIZE)
+    {
+        return nullptr;
+    }
+
+    if (begin[FRAME_DELIMITER_OFFSET] != FRAME_DELIMITER)
+    {
+        return nullptr;
+    }
+
+    if (util::unpack_bytes_to_width<uint16_t>(begin + LENGTH_MSB_OFFSET) != std::distance(begin + API_IDENTIFIER_OFFSET, end - 1))
     {
         return nullptr;
     }
@@ -64,7 +76,7 @@ uart_frame::uart_frame(uint8_t length_msb, uint8_t length_lsb, std::shared_ptr<f
 {
 }
 
-uint8_t uart_frame::get_api_identifier()
+uint8_t uart_frame::get_api_identifier() const
 {
     return data->api_identifier_value;
 }
@@ -76,7 +88,7 @@ std::shared_ptr<frame_data> uart_frame::get_data()
 
 uint8_t uart_frame::compute_checksum(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end)
 {
-    return 0xff - std::accumulate(begin, end, static_cast<uint8_t>(0));
+    return CHECKSUM_TARGET - std::accumulate(begin, end, static_cast<uint8_t>(0));
 }
 
 uart_frame::operator std::vector<uint8_t>() const
