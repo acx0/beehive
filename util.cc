@@ -177,9 +177,9 @@ std::vector<std::string> util::split(const std::string &str, const std::string &
     boost::char_separator<char> sep(separator.c_str());
     boost::tokenizer<boost::char_separator<char>> tokenizer(str, sep);
 
-    for (auto i = tokenizer.begin(); i != tokenizer.end(); ++i)
+    for (auto &i : tokenizer)
     {
-        tokens.push_back(*i);
+        tokens.push_back(i);
     }
 
     return tokens;
@@ -200,10 +200,7 @@ bool util::retry(std::function<bool()> function, uint32_t retries)
 
 bool util::try_parse_uint32_t(const std::string &str, uint32_t &out)
 {
-    std::istringstream iss(str);
-    iss >> out;
-
-    return static_cast<bool>(iss);
+    return static_cast<bool>(std::istringstream(str) >> out);
 }
 
 // TODO: merge all socket code into util methods and verify return status of send/recv calls to ensure no data loss

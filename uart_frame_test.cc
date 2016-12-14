@@ -14,7 +14,7 @@ uart_frame get_valid_tx_request_64_frame()
     uint8_t any_frame_id = 0x01;
     uint64_t any_destination_address = xbee_s1::BROADCAST_ADDRESS;
     uint8_t any_options = tx_request_64_frame::options::none;
-    std::vector<uint8_t> any_valid_payload { 't', 'e', 's', 't' };
+    std::vector<uint8_t> any_valid_payload{ 't', 'e', 's', 't' };
     return uart_frame(std::make_shared<tx_request_64_frame>(tx_request_64_frame(any_frame_id, any_destination_address, any_options, any_valid_payload)));
 }
 
@@ -78,7 +78,7 @@ TEST(UARTFrameTest, ComputeChecksumEmptyPayload)
 
 TEST(UARTFrameTest, ComputeChecksumNonemptyPayload)
 {
-    std::vector<uint8_t> frame { 0xde, 0xad, 0xbe, 0xef, 0xf0, 0x0d };
+    std::vector<uint8_t> frame{ 0xde, 0xad, 0xbe, 0xef, 0xf0, 0x0d };
     ASSERT_EQ(uart_frame::compute_checksum(frame.cbegin(), frame.cend()), 0xca);
 }
 

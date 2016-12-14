@@ -13,7 +13,7 @@
 #include <thread>
 #include <vector>
 
-#include "serial/serial.h"
+#include <serial/serial.h>
 
 #include "at_command_frame.h"
 #include "at_command.h"

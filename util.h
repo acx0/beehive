@@ -71,11 +71,18 @@ namespace util
         }
     }
 
+    // promotes to type printable as number so that value isn't printed as char
+    template <typename T>
+    auto promote_to_printable_integer_type(T i) -> decltype(+i)
+    {
+        return +i;
+    }
+
     template <typename T>
     std::string to_hex_string(T i)
     {
         std::ostringstream oss;
-        oss << "0x" << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << +i;
+        oss << "0x" << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << promote_to_printable_integer_type(i);
         return oss.str();
     }
 }
