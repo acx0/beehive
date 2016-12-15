@@ -36,16 +36,18 @@ public:
         return true;
     }
 
-    bool try_get(const K &key, V &value)
+    bool try_get(const K &key, V &value) const
     {
         std::lock_guard<std::mutex> lock(access_lock);
-        if (table.count(key) > 0)
+
+        auto iter = table.find(key);
+        if (iter == table.cend())
         {
-            value = table[key];
-            return true;
+            return false;
         }
 
-        return false;
+        value = iter->second;
+        return true;
     }
 
     typename std::unordered_map<K, V, Hash>::size_type erase(const K &key)
