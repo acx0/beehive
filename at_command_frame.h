@@ -13,7 +13,7 @@ class at_command_frame : public frame_data
 public:
     static const std::vector<uint8_t> REGISTER_QUERY;
 
-    at_command_frame(const std::string &command, const std::vector<uint8_t> &parameter = REGISTER_QUERY);
+    at_command_frame(const std::string &command, const std::vector<uint8_t> &parameter = REGISTER_QUERY, bool test_frame_id = false);
 
     const std::string &get_at_command() const;
 

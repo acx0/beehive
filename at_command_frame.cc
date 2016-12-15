@@ -2,20 +2,11 @@
 
 const std::vector<uint8_t> at_command_frame::REGISTER_QUERY;
 
-at_command_frame::at_command_frame(const std::string &command, const std::vector<uint8_t> &parameter)
-    : frame_data(api_identifier::at_command), frame_id(get_next_frame_id())     // TODO: only assign frame id upon successful construction?
+// TODO: for frame types that can be created as invalid even when using ctor, use helper func that validates or throw?
+// TODO: could also require at_command_frame to be constructed from at_command, would still have to validate in there
+at_command_frame::at_command_frame(const std::string &command, const std::vector<uint8_t> &parameter, bool test_frame_id)
+    : frame_data(api_identifier::at_command), frame_id(test_frame_id ? 1 : get_next_frame_id()), at_command(command), parameter(parameter)
 {
-    if (command.size() != 2)
-    {
-        // TODO: throw exception
-    }
-
-    at_command = command;
-
-    if (parameter != REGISTER_QUERY)
-    {
-        this->parameter = parameter;
-    }
 }
 
 const std::string &at_command_frame::get_at_command() const
