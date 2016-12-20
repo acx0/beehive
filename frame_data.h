@@ -7,11 +7,14 @@
 
 // TODO: rename this class to indicate that it's an interface?
 // TODO: derived classes should throw exception if payload > 100bytes
+// TODO: create typedefs for common fields? i.e. api_identifier_t, frame_id_t, etc ?
+//      - would allow refactoring MIN_FRAME_DATA_LENGTH calculation to not rely on private members/storage implementation
 class frame_data
 {
 public:
     // informs xbee not to reply with a status response frame
     static const uint8_t FRAME_ID_DISABLE_RESPONSE_FRAME;
+    static const size_t API_IDENTIFIER_OFFSET;
 
     const uint8_t api_identifier_value;
 

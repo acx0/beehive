@@ -1,6 +1,7 @@
 #include "frame_data.h"
 
 const uint8_t frame_data::FRAME_ID_DISABLE_RESPONSE_FRAME = 0;
+const size_t frame_data::API_IDENTIFIER_OFFSET = 0;
 uint8_t frame_data::next_frame_id = 1;
 std::mutex frame_data::frame_id_lock;
 
