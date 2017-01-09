@@ -1,18 +1,27 @@
 #include "message_segment.h"
 
+const uint16_t message_segment::CHECKSUM_TARGET = 0xffff;
+const uint8_t message_segment::MESSAGE_FLAGS_MASK = 0x0f;
+const size_t message_segment::MESSAGE_TYPE_SHIFT_BITS = 4;
+// TODO: rewrite offsets as literal values or keep as is?
 const size_t message_segment::SOURCE_PORT_OFFSET = 0;
 const size_t message_segment::DESTINATION_PORT_OFFSET = SOURCE_PORT_OFFSET + sizeof(source_port);
-const size_t message_segment::SEQUENCE_NUM_OFFSET = DESTINATION_PORT_OFFSET + sizeof(destination_port);
+const size_t message_segment::SEQUENCE_NUM_OFFSET
+    = DESTINATION_PORT_OFFSET + sizeof(destination_port);
 const size_t message_segment::CHECKSUM_OFFSET = SEQUENCE_NUM_OFFSET + sizeof(sequence_num);
 const size_t message_segment::FLAGS_OFFSET = CHECKSUM_OFFSET + sizeof(checksum);
-const size_t message_segment::MIN_SEGMENT_LENGTH = sizeof(source_port) + sizeof(destination_port) + sizeof(sequence_num) + sizeof(checksum) + sizeof(flags);
+const size_t message_segment::MIN_SEGMENT_LENGTH = sizeof(source_port) + sizeof(destination_port)
+    + sizeof(sequence_num) + sizeof(checksum) + sizeof(flags);
 const std::vector<uint8_t> message_segment::EMPTY_PAYLOAD;
 
-message_segment::message_segment(uint16_t source_port, uint16_t destination_port, uint16_t sequence_num, uint16_t checksum, uint8_t type, uint8_t flags, const std::vector<uint8_t> &message)
-    : source_port(source_port), destination_port(destination_port), sequence_num(sequence_num), checksum(checksum), flags(0), message(message)
+message_segment::message_segment(uint16_t source_port, uint16_t destination_port,
+    uint16_t sequence_num, uint8_t type, uint8_t flags, const std::vector<uint8_t> &message)
+    : source_port(source_port), destination_port(destination_port), sequence_num(sequence_num),
+      flags(0), message(message)
 {
-    this->flags += type << 4;
-    this->flags += flags & 0x0f;
+    this->flags += type << MESSAGE_TYPE_SHIFT_BITS;
+    this->flags += flags & MESSAGE_FLAGS_MASK;
+    checksum = compute_checksum();
 }
 
 message_segment::message_segment(const std::vector<uint8_t> &segment)
@@ -24,7 +33,8 @@ message_segment::message_segment(const std::vector<uint8_t> &segment)
     }
 
     source_port = util::unpack_bytes_to_width<uint16_t>(segment.begin() + SOURCE_PORT_OFFSET);
-    destination_port = util::unpack_bytes_to_width<uint16_t>(segment.begin() + DESTINATION_PORT_OFFSET);
+    destination_port
+        = util::unpack_bytes_to_width<uint16_t>(segment.begin() + DESTINATION_PORT_OFFSET);
     sequence_num = util::unpack_bytes_to_width<uint16_t>(segment.begin() + SEQUENCE_NUM_OFFSET);
     checksum = util::unpack_bytes_to_width<uint16_t>(segment.begin() + CHECKSUM_OFFSET);
     flags = segment[FLAGS_OFFSET];
@@ -35,24 +45,39 @@ message_segment::message_segment(const std::vector<uint8_t> &segment)
     }
 }
 
-std::shared_ptr<message_segment> message_segment::create_syn(uint16_t source_port, uint16_t destination_port)
+std::shared_ptr<message_segment> message_segment::create_syn(
+    uint16_t source_port, uint16_t destination_port)
 {
-    return std::make_shared<message_segment>(source_port, destination_port, 0, 0, type::stream_segment, flag::syn, EMPTY_PAYLOAD);
+    return std::make_shared<message_segment>(
+        source_port, destination_port, 0, type::stream_segment, flag::syn, EMPTY_PAYLOAD);
 }
 
-std::shared_ptr<message_segment> message_segment::create_synack(uint16_t source_port, uint16_t destination_port)
+std::shared_ptr<message_segment> message_segment::create_synack(
+    uint16_t source_port, uint16_t destination_port)
 {
-    return std::make_shared<message_segment>(source_port, destination_port, 0, 0, type::stream_segment, flag::syn | flag::ack, EMPTY_PAYLOAD);
+    return std::make_shared<message_segment>(source_port, destination_port, 0, type::stream_segment,
+        flag::syn | flag::ack, EMPTY_PAYLOAD);
 }
 
-std::shared_ptr<message_segment> message_segment::create_ack(uint16_t source_port, uint16_t destination_port, uint16_t sequence_number)
+std::shared_ptr<message_segment> message_segment::create_ack(
+    uint16_t source_port, uint16_t destination_port, uint16_t sequence_number)
 {
-    return std::make_shared<message_segment>(source_port, destination_port, sequence_number, 0, type::stream_segment, flag::ack, EMPTY_PAYLOAD);
+    return std::make_shared<message_segment>(source_port, destination_port, sequence_number,
+        type::stream_segment, flag::ack, EMPTY_PAYLOAD);
 }
 
-std::shared_ptr<message_segment> message_segment::create_fin(uint16_t source_port, uint16_t destination_port)
+std::shared_ptr<message_segment> message_segment::create_rst(
+    uint16_t source_port, uint16_t destination_port)
 {
-    return std::make_shared<message_segment>(source_port, destination_port, 0, 0, type::stream_segment, flag::fin, EMPTY_PAYLOAD);
+    return std::make_shared<message_segment>(
+        source_port, destination_port, 0, type::stream_segment, flag::rst, EMPTY_PAYLOAD);
+}
+
+std::shared_ptr<message_segment> message_segment::create_fin(
+    uint16_t source_port, uint16_t destination_port)
+{
+    return std::make_shared<message_segment>(
+        source_port, destination_port, 0, type::stream_segment, flag::fin, EMPTY_PAYLOAD);
 }
 
 uint16_t message_segment::get_source_port() const
@@ -77,17 +102,18 @@ uint16_t message_segment::get_checksum() const
 
 uint16_t message_segment::compute_checksum() const
 {
-    return 0xffff - source_port - destination_port - sequence_num - flags - std::accumulate(message.begin(), message.end(), static_cast<uint16_t>(0));
+    return CHECKSUM_TARGET - source_port - destination_port - sequence_num - flags
+        - std::accumulate(message.begin(), message.end(), static_cast<uint16_t>(0));
 }
 
 uint8_t message_segment::get_message_type() const
 {
-    return flags >> 4;
+    return flags >> MESSAGE_TYPE_SHIFT_BITS;
 }
 
 uint8_t message_segment::get_message_flags() const
 {
-    return flags & 0x0f;
+    return flags & MESSAGE_FLAGS_MASK;
 }
 
 bool message_segment::flags_empty() const
@@ -137,7 +163,7 @@ message_segment::operator std::vector<uint8_t>() const
     util::pack_value_as_bytes(std::back_inserter(segment), source_port);
     util::pack_value_as_bytes(std::back_inserter(segment), destination_port);
     util::pack_value_as_bytes(std::back_inserter(segment), sequence_num);
-    util::pack_value_as_bytes(std::back_inserter(segment), compute_checksum());
+    util::pack_value_as_bytes(std::back_inserter(segment), checksum);
     segment.push_back(flags);
     segment.insert(segment.end(), message.begin(), message.end());
 

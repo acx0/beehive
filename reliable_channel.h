@@ -194,7 +194,7 @@ private:
             }
 
             auto payload = std::vector<uint8_t>(std::begin(buffer), std::begin(buffer) + bytes_read);
-            auto segment = std::make_shared<message_segment>(connection_key.destination_port, connection_key.source_port, next_sequence_number, 0, message_segment::type::stream_segment, message_segment::flag::none, payload);
+            auto segment = std::make_shared<message_segment>(connection_key.destination_port, connection_key.source_port, next_sequence_number, message_segment::type::stream_segment, message_segment::flag::none, payload);
 
             std::unique_lock<std::mutex> lock(access_lock);
             ++next_sequence_number;

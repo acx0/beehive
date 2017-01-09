@@ -14,11 +14,15 @@
 class message_segment
 {
 public:
+    static const uint16_t CHECKSUM_TARGET;
+    static const uint8_t MESSAGE_FLAGS_MASK;
+    static const size_t MESSAGE_TYPE_SHIFT_BITS;
     static const size_t SOURCE_PORT_OFFSET;
     static const size_t DESTINATION_PORT_OFFSET;
     static const size_t SEQUENCE_NUM_OFFSET;
     static const size_t CHECKSUM_OFFSET;
-    static const size_t FLAGS_OFFSET;   // note: 4 MSB of flags field reserved for type value, 4 LSB for flags value
+    // note: 4 MSB of flags field reserved for type value, 4 LSB for flags value
+    static const size_t FLAGS_OFFSET;
     static const size_t MIN_SEGMENT_LENGTH;
     static const std::vector<uint8_t> EMPTY_PAYLOAD;
 
@@ -38,14 +42,22 @@ public:
         fin = 0x8,
     };
 
-    // TODO: will need to have field for final_destination and treat tx_request's destination field as next-hop field to implement routing
-    message_segment(uint16_t source_port, uint16_t destination_port, uint16_t sequence_num, uint16_t checksum, uint8_t type, uint8_t flags, const std::vector<uint8_t> &message);
+    // TODO: will need to have field for final_destination and treat tx_request's destination field
+    // as next-hop field to implement routing
+    message_segment(uint16_t source_port, uint16_t destination_port, uint16_t sequence_num,
+        uint8_t type, uint8_t flags, const std::vector<uint8_t> &message);
     message_segment(const std::vector<uint8_t> &segment);
 
-    static std::shared_ptr<message_segment> create_syn(uint16_t source_port, uint16_t destination_port);
-    static std::shared_ptr<message_segment> create_synack(uint16_t source_port, uint16_t destination_port);
-    static std::shared_ptr<message_segment> create_ack(uint16_t source_port, uint16_t destination_port, uint16_t sequence_number = 0);
-    static std::shared_ptr<message_segment> create_fin(uint16_t source_port, uint16_t destination_port);
+    static std::shared_ptr<message_segment> create_syn(
+        uint16_t source_port, uint16_t destination_port);
+    static std::shared_ptr<message_segment> create_synack(
+        uint16_t source_port, uint16_t destination_port);
+    static std::shared_ptr<message_segment> create_ack(
+        uint16_t source_port, uint16_t destination_port, uint16_t sequence_number = 0);
+    static std::shared_ptr<message_segment> create_rst(
+        uint16_t source_port, uint16_t destination_port);
+    static std::shared_ptr<message_segment> create_fin(
+        uint16_t source_port, uint16_t destination_port);
 
     uint16_t get_source_port() const;
     uint16_t get_destination_port() const;
@@ -70,8 +82,9 @@ private:
     uint16_t destination_port;
     uint16_t sequence_num;
     uint16_t checksum;
-    uint8_t flags;  // bits 0-3: message flags, bits 4-7: message type
-    std::vector<uint8_t> message;  // TODO: limit to 91 bytes (i.e. max_rf_data_size - message_segment overhead)
+    uint8_t flags;    // bits 0-3: message flags, bits 4-7: message type
+    // TODO: limit to 91 bytes (i.e. max_rf_data_size - message_segment overhead)
+    std::vector<uint8_t> message;
 };
 
 #endif

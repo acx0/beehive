@@ -262,7 +262,7 @@ void beehive::neighbour_discoverer()
     auto last_expiration_check = std::chrono::system_clock::now();
     auto expiration_check_interval = std::chrono::seconds(10);
     auto expiration_threshold = std::chrono::seconds(10);
-    auto segment = std::make_shared<message_segment>(0, 0, 0, 0, message_segment::type::neighbour_discovery, message_segment::flag::none, message_segment::EMPTY_PAYLOAD);
+    auto segment = std::make_shared<message_segment>(0, 0, 0, message_segment::type::neighbour_discovery, message_segment::flag::none, message_segment::EMPTY_PAYLOAD);
     uart_frame frame(std::make_shared<tx_request_64_frame>(xbee_s1::BROADCAST_ADDRESS, *segment));
 
     while (true)
@@ -291,7 +291,7 @@ void beehive::process_neighbour_discovery_message(uint64_t source_address, std::
     if (segment->flags_empty())
     {
         // discovery request, reply with ack
-        auto segment = std::make_shared<message_segment>(0, 0, 0, 0, message_segment::type::neighbour_discovery, message_segment::flag::ack, message_segment::EMPTY_PAYLOAD);
+        auto segment = std::make_shared<message_segment>(0, 0, 0, message_segment::type::neighbour_discovery, message_segment::flag::ack, message_segment::EMPTY_PAYLOAD);
         uart_frame frame(std::make_shared<tx_request_64_frame>(source_address, *segment));
         frame_writer_queue->push(std::make_shared<std::vector<uint8_t>>(frame));
     }

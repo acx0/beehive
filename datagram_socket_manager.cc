@@ -221,7 +221,7 @@ void datagram_socket_manager::payload_write_handler(int communication_socket_fd,
         uint16_t destination_port = util::unpack_bytes_to_width<uint16_t>(std::begin(buffer) + 8);
 
         auto payload = std::vector<uint8_t>(std::begin(buffer), std::begin(buffer) + bytes_read);
-        auto segment = std::make_shared<message_segment>(source_port, destination_port, 0, 0, message_segment::type::datagram_segment, message_segment::flag::none, payload);
+        auto segment = std::make_shared<message_segment>(source_port, destination_port, 0, message_segment::type::datagram_segment, message_segment::flag::none, payload);
         uart_frame frame(std::make_shared<tx_request_64_frame>(destination_address, *segment));
         write_queue->push(std::make_shared<std::vector<uint8_t>>(frame));
     }
