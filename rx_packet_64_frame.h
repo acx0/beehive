@@ -14,7 +14,8 @@ class rx_packet_64_frame : public frame_data
 public:
     static const size_t MIN_FRAME_DATA_LENGTH;
 
-    static std::shared_ptr<rx_packet_64_frame> parse_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end);
+    static std::shared_ptr<rx_packet_64_frame> parse_frame(
+        std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end);
 
     // options field is used as bitset
     enum options_bit : uint8_t
@@ -23,7 +24,8 @@ public:
         pan_broadcast = 2
     };
 
-    rx_packet_64_frame(uint64_t source_address, uint8_t rssi, uint8_t options, std::vector<uint8_t> rf_data);
+    rx_packet_64_frame(
+        uint64_t source_address, uint8_t rssi, uint8_t options, std::vector<uint8_t> rf_data);
 
     uint64_t get_source_address() const;
     const std::vector<uint8_t> &get_rf_data() const;
@@ -33,7 +35,7 @@ public:
 
 private:
     uint64_t source_address;
-    uint8_t rssi;   // received signal strength indicator, hex equivalent of (-dBm) value
+    uint8_t rssi;    // received signal strength indicator, hex equivalent of (-dBm) value
     uint8_t options;
     std::vector<uint8_t> rf_data;
 };
