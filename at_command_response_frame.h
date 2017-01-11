@@ -19,7 +19,8 @@ public:
     static const size_t MIN_FRAME_DATA_LENGTH;
     static const std::vector<uint8_t> EMPTY_VALUE;
 
-    static std::shared_ptr<at_command_response_frame> parse_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end);
+    static std::shared_ptr<at_command_response_frame> parse_frame(
+        std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end);
 
     enum status : uint8_t
     {
@@ -29,7 +30,8 @@ public:
         invalid_parameter = 0x03
     };
 
-    at_command_response_frame(uint8_t frame_id, const std::string &at_command, uint8_t status_value, const std::vector<uint8_t> &value = EMPTY_VALUE);
+    at_command_response_frame(uint8_t frame_id, const std::string &at_command, uint8_t status_value,
+        const std::vector<uint8_t> &value = EMPTY_VALUE);
 
     uint8_t get_status();
     const std::vector<uint8_t> &get_value() const;

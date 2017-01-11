@@ -51,14 +51,16 @@ private:
     void frame_processor();
     void frame_io_scheduler();
     void neighbour_discoverer();
-    void process_neighbour_discovery_message(uint64_t source_address, std::shared_ptr<message_segment> segment);
+    void process_neighbour_discovery_message(
+        uint64_t source_address, std::shared_ptr<message_segment> segment);
 
     static const std::chrono::milliseconds WRITE_QUEUE_READ_TIMEOUT;
 
     const std::string socket_path;
     std::shared_ptr<communication_endpoint> endpoint;
     // TODO: bound frame_writer_queue to a fixed size?
-    std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> frame_writer_queue;
+    std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>>
+        frame_writer_queue;
     threadsafe_blocking_queue<std::shared_ptr<uart_frame>> frame_processor_queue;
     channel_manager _channel_manager;
     datagram_socket_manager _datagram_socket_manager;

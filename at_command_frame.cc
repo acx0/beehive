@@ -2,10 +2,14 @@
 
 const std::vector<uint8_t> at_command_frame::REGISTER_QUERY;
 
-// TODO: for frame types that can be created as invalid even when using ctor, use helper func that validates or throw?
-// TODO: could also require at_command_frame to be constructed from at_command, would still have to validate in there
-at_command_frame::at_command_frame(const std::string &command, const std::vector<uint8_t> &parameter, bool test_frame_id)
-    : frame_data(api_identifier::at_command), frame_id(test_frame_id ? 1 : get_next_frame_id()), at_command(command), parameter(parameter)
+// TODO: for frame types that can be created as invalid even when using ctor, use helper func that
+// validates or throw?
+// TODO: could also require at_command_frame to be constructed from at_command, would still have to
+// validate in there
+at_command_frame::at_command_frame(
+    const std::string &command, const std::vector<uint8_t> &parameter, bool test_frame_id)
+    : frame_data(api_identifier::at_command), frame_id(test_frame_id ? 1 : get_next_frame_id()),
+      at_command(command), parameter(parameter)
 {
 }
 

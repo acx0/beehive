@@ -23,6 +23,7 @@ public:
     static const size_t CHECKSUM_OFFSET;
     // note: 4 MSB of flags field reserved for type value, 4 LSB for flags value
     static const size_t FLAGS_OFFSET;
+    static const size_t MESSAGE_OFFSET;
     static const size_t MIN_SEGMENT_LENGTH;
     static const std::vector<uint8_t> EMPTY_PAYLOAD;
 

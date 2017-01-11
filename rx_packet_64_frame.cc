@@ -1,8 +1,12 @@
 #include "rx_packet_64_frame.h"
 
+const size_t rx_packet_64_frame::SOURCE_ADDRESS_OFFSET
+    = frame_data::API_IDENTIFIER_OFFSET + sizeof(frame_data::api_identifier_value);
+const size_t rx_packet_64_frame::RSSI_OFFSET = SOURCE_ADDRESS_OFFSET + sizeof(source_address);
+const size_t rx_packet_64_frame::OPTIONS_OFFSET = RSSI_OFFSET + sizeof(rssi);
+const size_t rx_packet_64_frame::RF_DATA_OFFSET = OPTIONS_OFFSET + sizeof(options);
 // TODO: rf_data can't be empty, xbee discards packet (double check)
-const size_t rx_packet_64_frame::MIN_FRAME_DATA_LENGTH
-    = sizeof(api_identifier_value) + sizeof(source_address) + sizeof(rssi) + sizeof(options);
+const size_t rx_packet_64_frame::MIN_FRAME_DATA_LENGTH = RF_DATA_OFFSET;
 
 std::shared_ptr<rx_packet_64_frame> rx_packet_64_frame::parse_frame(
     std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end)
@@ -13,20 +17,20 @@ std::shared_ptr<rx_packet_64_frame> rx_packet_64_frame::parse_frame(
         return nullptr;
     }
 
-    if (begin[0] != api_identifier::rx_packet_64)
+    if (begin[frame_data::API_IDENTIFIER_OFFSET] != api_identifier::rx_packet_64)
     {
         return nullptr;
     }
 
     // unpack 8 byte address from bytes 1-8
-    uint64_t source_address = util::unpack_bytes_to_width<uint64_t>(begin + 1);
-    uint8_t rssi = begin[9];
-    uint8_t options = begin[10];
+    uint64_t source_address = util::unpack_bytes_to_width<uint64_t>(begin + SOURCE_ADDRESS_OFFSET);
+    uint8_t rssi = begin[RSSI_OFFSET];
+    uint8_t options = begin[OPTIONS_OFFSET];
     std::vector<uint8_t> rf_data;
 
-    if (size > MIN_FRAME_DATA_LENGTH)
+    if (size > RF_DATA_OFFSET)
     {
-        rf_data = std::vector<uint8_t>(begin + MIN_FRAME_DATA_LENGTH, end);
+        rf_data = std::vector<uint8_t>(begin + RF_DATA_OFFSET, end);
     }
 
     return std::make_shared<rx_packet_64_frame>(source_address, rssi, options, rf_data);

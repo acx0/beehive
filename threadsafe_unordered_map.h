@@ -9,14 +9,13 @@ template <typename K, typename V, typename Hash = std::hash<K>>
 class threadsafe_unordered_map
 {
 public:
-    // TODO: any consequence of returning V as ref here (if V is std::shared_ptr?)
     V &operator[](const K &key)
     {
         std::lock_guard<std::mutex> lock(access_lock);
         return table[key];
     }
 
-    V &get_or_add(const K &key, V value)
+    V &get_or_add(const K &key, const V &value)
     {
         std::lock_guard<std::mutex> lock(access_lock);
         return table.count(key) > 0
@@ -24,7 +23,7 @@ public:
             : table[key] = value;
     }
 
-    bool try_add(const K &key, V &value)
+    bool try_add(const K &key, const V &value)
     {
         std::lock_guard<std::mutex> lock(access_lock);
         if (table.count(key) > 0)

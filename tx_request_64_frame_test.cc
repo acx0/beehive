@@ -10,7 +10,7 @@ namespace tx_request_64_frame_test
 {
     uint8_t any_frame_id = 1;
     uint64_t any_destination_address = 0xabcdef0123456789;
-    uint8_t any_options = 0;
+    uint8_t any_options = tx_request_64_frame::options::none;
     std::vector<uint8_t> any_valid_payload{'t', 'e', 's', 't'};
 
     tx_request_64_frame get_valid_tx_request_64_frame_empty_rf_data()

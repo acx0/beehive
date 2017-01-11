@@ -6,13 +6,15 @@ uint64_t simulated_communication_endpoint::get_random_address()
     std::mt19937 mt(rd());
     std::uniform_int_distribution<uint64_t> dist(0, std::numeric_limits<uint64_t>::max());
 
+    // TODO: can generate address = (CONST_XBEE_SH_32_BITS + rand(32_bits))
     return dist(mt);
 }
 
 simulated_communication_endpoint::simulated_communication_endpoint()
     : address(get_random_address())
 {
-    socket_fd = util::create_active_abstract_domain_socket(beehive_config::BROADCAST_SERVER_SOCKET_PATH, SOCK_SEQPACKET);
+    socket_fd = util::create_active_abstract_domain_socket(
+        beehive_config::BROADCAST_SERVER_SOCKET_PATH, SOCK_SEQPACKET);
     if (socket_fd == -1)
     {
         // TODO
@@ -36,12 +38,14 @@ void simulated_communication_endpoint::transmit_frame(const std::vector<uint8_t>
     send(socket_fd, payload.data(), payload.size(), 0);
 }
 
-// TODO: change signature to return failure status as bool and frame payload as out param? (0 sized payload is 'valid')
+// TODO: change signature to return failure status as bool and frame payload as out param? (0 sized
+// payload is 'valid')
 std::shared_ptr<uart_frame> simulated_communication_endpoint::receive_frame()
 {
     int error;
     std::vector<uint8_t> buffer;
-    ssize_t bytes_read = util::nonblocking_recv(socket_fd, buffer, uart_frame::MAX_FRAME_SIZE, error);
+    ssize_t bytes_read
+        = util::nonblocking_recv(socket_fd, buffer, uart_frame::MAX_FRAME_SIZE, error);
 
     if (bytes_read == 0)
     {
@@ -52,11 +56,12 @@ std::shared_ptr<uart_frame> simulated_communication_endpoint::receive_frame()
     {
         if (error == EAGAIN)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(25)); // TODO: make configurable in beehive_config?
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds(25));    // TODO: make configurable in beehive_config?
             return nullptr;
         }
 
-        return nullptr; // TODO: fatal
+        return nullptr;    // TODO: fatal
     }
 
     LOG("sim_read:  [", util::get_frame_hex(buffer), "]");
@@ -69,7 +74,9 @@ std::shared_ptr<uart_frame> simulated_communication_endpoint::receive_frame()
 
     // TODO: util method verify_checksum
     uint8_t received_checksum = *(buffer.end() - 1);
-    uint8_t calculated_checksum = uart_frame::compute_checksum(buffer.begin() + uart_frame::HEADER_LENGTH, buffer.end() - 1);   // ignore frame header and trailing checksum
+    uint8_t calculated_checksum
+        = uart_frame::compute_checksum(buffer.begin() + uart_frame::HEADER_LENGTH,
+            buffer.end() - 1);    // ignore frame header and trailing checksum
 
     if (calculated_checksum != received_checksum)
     {

@@ -29,7 +29,7 @@ namespace util
     std::string get_escaped_string(const std::string &str);
     std::string strip_newline(const std::string &str);
     std::string get_frame_hex(const std::vector<uint8_t> &frame, bool show_prefix = false);
-    void sleep(unsigned int seconds);   // TODO: use chrono?
+    void sleep(unsigned int seconds);    // TODO: use chrono?
     int create_passive_abstract_domain_socket(const std::string &name, int type);
     int create_passive_domain_socket(const std::string &name, int type);
     int create_active_abstract_domain_socket(const std::string &name, int type);
@@ -39,7 +39,8 @@ namespace util
     std::vector<std::string> split(const std::string &str, const std::string &separator);
     bool retry(std::function<bool()> function, uint32_t retries);
     bool try_parse_uint32_t(const std::string &str, uint32_t &out);
-    ssize_t nonblocking_recv(int socket_fd, std::vector<uint8_t> &buffer, size_t buffer_length, int &error);
+    ssize_t nonblocking_recv(
+        int socket_fd, std::vector<uint8_t> &buffer, size_t buffer_length, int &error);
 
     // unpack byte vector of size n into single value of width n bytes, MSB first, n = sizeof(T)
     template <typename T, typename Iterator>
@@ -82,7 +83,8 @@ namespace util
     std::string to_hex_string(T i)
     {
         std::ostringstream oss;
-        oss << "0x" << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << promote_to_printable_integer_type(i);
+        oss << "0x" << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex
+            << promote_to_printable_integer_type(i);
         return oss.str();
     }
 }

@@ -3,8 +3,8 @@
 #include <memory>
 #include <string>
 
-#include "beehive_config.h"
 #include "beehive.h"
+#include "beehive_config.h"
 #include "logger.h"
 #include "simulated_communication_endpoint.h"
 #include "util.h"
@@ -127,8 +127,8 @@ int main(int argc, char *argv[])
      *          - 0x3d090 = 250000 baud
      *              - doesn't work? try 0x38400 = 230400 instead ?
      *              - so far only "7" seems to work
-     *          - note: RF data rate is not affected by BD parameter, if interface rate is set higher
-     *              than the RF data rate, flow control is required
+     *          - note: RF data rate is not affected by BD parameter, if interface rate is set
+     *              higher than the RF data rate, flow control is required
      *              - xbee pro RF data rate: 250000 b/s ~= 30 kB/s
      *
      *  - potentially useful settings:
@@ -137,9 +137,10 @@ int main(int argc, char *argv[])
      *      - ATPL
      *          - power level, might be able to incorporate this to save power
      *      - ATAC
-     *          - used to explicitly apply changes to module parameters - module is re-initialized based on changes to values
-     *          - in contrast to WR which saves values to non-volatile memory but module still operates according to previous
-     *              values until module is rebooted or CN is issued
+     *          - used to explicitly apply changes to module parameters
+     *          - module is re-initialized based on changes to values
+     *          - in contrast to WR which saves values to non-volatile memory but module still
+     *              operates according to previous values until module is rebooted or CN is issued
      */
 
     try
@@ -150,7 +151,9 @@ int main(int argc, char *argv[])
         }
         else if (configure)
         {
-            return xbee_s1(device, baud).configure_firmware_settings() ? EXIT_SUCCESS : EXIT_FAILURE;
+            return xbee_s1(device, baud).configure_firmware_settings()
+                ? EXIT_SUCCESS
+                : EXIT_FAILURE;
         }
         else if (simulate_wireless)
         {
@@ -158,10 +161,13 @@ int main(int argc, char *argv[])
         }
         else if (read_xbee_config)
         {
-            return xbee_s1(device, baud).read_configuration_registers() ? EXIT_SUCCESS : EXIT_FAILURE;
+            return xbee_s1(device, baud).read_configuration_registers()
+                ? EXIT_SUCCESS
+                : EXIT_FAILURE;
         }
         else if (test_xbee)
         {
+            // TODO: get rid of this flag? just use --read-xbee-config
             return xbee_s1(device, baud).read_and_set_address() ? EXIT_SUCCESS : EXIT_FAILURE;
         }
         else
@@ -179,7 +185,8 @@ int main(int argc, char *argv[])
             // ensure uniqueness of socket paths when testing multiple devices on a single machine
             if (!custom_socket_path)
             {
-                config = beehive_config(beehive_config::BEEHIVE_SOCKET_PATH_PREFIX + util::to_hex_string(endpoint->get_address()));
+                config = beehive_config(beehive_config::BEEHIVE_SOCKET_PATH_PREFIX
+                    + util::to_hex_string(endpoint->get_address()));
             }
 
             beehive(config, endpoint).run();

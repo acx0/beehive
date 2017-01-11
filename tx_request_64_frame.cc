@@ -1,12 +1,13 @@
 #include "tx_request_64_frame.h"
 
-const size_t tx_request_64_frame::FRAME_ID_OFFSET = 1;
-const size_t tx_request_64_frame::DESTINATION_ADDRESS_OFFSET = 2;
-const size_t tx_request_64_frame::OPTIONS_OFFSET = 10;
-const size_t tx_request_64_frame::RF_DATA_OFFSET = 11;
+const size_t tx_request_64_frame::FRAME_ID_OFFSET
+    = frame_data::API_IDENTIFIER_OFFSET + sizeof(frame_data::api_identifier_value);
+const size_t tx_request_64_frame::DESTINATION_ADDRESS_OFFSET = FRAME_ID_OFFSET + sizeof(frame_id);
+const size_t tx_request_64_frame::OPTIONS_OFFSET
+    = DESTINATION_ADDRESS_OFFSET + sizeof(destination_address);
+const size_t tx_request_64_frame::RF_DATA_OFFSET = OPTIONS_OFFSET + sizeof(options_value);
 // TODO: verify if rf_data can be empty
-const size_t tx_request_64_frame::MIN_FRAME_DATA_LENGTH = sizeof(api_identifier) + sizeof(frame_id)
-    + sizeof(destination_address) + sizeof(options_value);
+const size_t tx_request_64_frame::MIN_FRAME_DATA_LENGTH = RF_DATA_OFFSET;
 
 std::shared_ptr<tx_request_64_frame> tx_request_64_frame::parse_frame(
     std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end)

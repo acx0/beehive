@@ -1,5 +1,11 @@
 # http://clang.llvm.org/docs/ClangFormatStyleOptions.html
 
+# TODO: force ctor init lists to always start on new line
+# TODO: what's causing 14 space indent for this line? (expected 8)
+#   ASSERT_EQ(static_cast<std::vector<uint8_t>>(msg),
+#       std::vector<uint8_t>(
+#                 {0xff, 0xff, 0x00, 0xab, 0x00, 0x7b, 0xfd, 0x16, 0x04, 0x74, 0x65, 0x73, 0x74}));
+
 AccessModifierOffset: -4
 AlignAfterOpenBracket: DontAlign
 AlignAfterOpenBracket: false

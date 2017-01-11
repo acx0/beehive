@@ -3,15 +3,14 @@
 const uint16_t message_segment::CHECKSUM_TARGET = 0xffff;
 const uint8_t message_segment::MESSAGE_FLAGS_MASK = 0x0f;
 const size_t message_segment::MESSAGE_TYPE_SHIFT_BITS = 4;
-// TODO: rewrite offsets as literal values or keep as is?
 const size_t message_segment::SOURCE_PORT_OFFSET = 0;
 const size_t message_segment::DESTINATION_PORT_OFFSET = SOURCE_PORT_OFFSET + sizeof(source_port);
 const size_t message_segment::SEQUENCE_NUM_OFFSET
     = DESTINATION_PORT_OFFSET + sizeof(destination_port);
 const size_t message_segment::CHECKSUM_OFFSET = SEQUENCE_NUM_OFFSET + sizeof(sequence_num);
 const size_t message_segment::FLAGS_OFFSET = CHECKSUM_OFFSET + sizeof(checksum);
-const size_t message_segment::MIN_SEGMENT_LENGTH = sizeof(source_port) + sizeof(destination_port)
-    + sizeof(sequence_num) + sizeof(checksum) + sizeof(flags);
+const size_t message_segment::MESSAGE_OFFSET = FLAGS_OFFSET + sizeof(flags);
+const size_t message_segment::MIN_SEGMENT_LENGTH = MESSAGE_OFFSET;
 const std::vector<uint8_t> message_segment::EMPTY_PAYLOAD;
 
 message_segment::message_segment(uint16_t source_port, uint16_t destination_port,
@@ -39,9 +38,9 @@ message_segment::message_segment(const std::vector<uint8_t> &segment)
     checksum = util::unpack_bytes_to_width<uint16_t>(segment.begin() + CHECKSUM_OFFSET);
     flags = segment[FLAGS_OFFSET];
 
-    if (segment.size() > MIN_SEGMENT_LENGTH)
+    if (segment.size() > MESSAGE_OFFSET)
     {
-        message = std::vector<uint8_t>(segment.begin() + MIN_SEGMENT_LENGTH, segment.end());
+        message = std::vector<uint8_t>(segment.begin() + MESSAGE_OFFSET, segment.end());
     }
 }
 

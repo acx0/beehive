@@ -33,7 +33,9 @@ struct datagram_segment
 class datagram_socket_manager
 {
 public:
-    datagram_socket_manager(const beehive_config &config, std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue);
+    datagram_socket_manager(const beehive_config &config,
+        std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>>
+            write_queue);
 
     bool try_create_passive_socket(int control_socket_fd, uint16_t listen_port);
     bool try_create_active_socket(int control_socket_fd);
@@ -42,20 +44,25 @@ public:
 private:
     static uint32_t get_next_socket_suffix();
 
-    void passive_socket_manager(int control_socket_fd, int listen_socket_fd, uint16_t listen_port, std::shared_ptr<threadsafe_blocking_queue<datagram_segment>> segment_queue);
+    void passive_socket_manager(int control_socket_fd, int listen_socket_fd, uint16_t listen_port,
+        std::shared_ptr<threadsafe_blocking_queue<datagram_segment>> segment_queue);
     void active_socket_manager(int control_socket_fd);
     void destroy_socket(uint16_t port);
-    void payload_read_handler(int communication_socket_fd, std::shared_ptr<threadsafe_blocking_queue<datagram_segment>> segment_queue, std::shared_ptr<bool> running);
-    void payload_write_handler(int communication_socket_fd, uint16_t source_port, std::shared_ptr<bool> running);
+    void payload_read_handler(int communication_socket_fd,
+        std::shared_ptr<threadsafe_blocking_queue<datagram_segment>> segment_queue,
+        std::shared_ptr<bool> running);
+    void payload_write_handler(
+        int communication_socket_fd, uint16_t source_port, std::shared_ptr<bool> running);
 
     // TODO: defining locally for now since currently used for stack allocated buffer
     static const size_t MAX_MESSAGE_LENGTH;
     static uint32_t socket_suffix;
     static std::mutex socket_suffix_lock;
 
-    const std::string dgram_path_prefix;;
+    const std::string dgram_path_prefix;
     std::shared_ptr<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>> write_queue;
-    threadsafe_unordered_map<uint16_t, std::shared_ptr<threadsafe_blocking_queue<datagram_segment>>> segment_queue_map;
+    threadsafe_unordered_map<uint16_t, std::shared_ptr<threadsafe_blocking_queue<datagram_segment>>>
+        segment_queue_map;
     port_manager _port_manager;
 };
 

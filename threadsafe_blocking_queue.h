@@ -28,7 +28,7 @@ public:
     T wait_and_pop()
     {
         std::unique_lock<std::mutex> lock(access_lock);
-        condition.wait(lock, [this]{ return !data.empty(); });
+        condition.wait(lock, [this] { return !data.empty(); });
 
         auto value = data.front();
         data.pop();
@@ -40,7 +40,7 @@ public:
     {
         std::unique_lock<std::mutex> lock(access_lock);
 
-        if (condition.wait_for(lock, timeout, [this]{ return !data.empty(); }))
+        if (condition.wait_for(lock, timeout, [this] { return !data.empty(); }))
         {
             value = data.front();
             data.pop();

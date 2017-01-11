@@ -53,6 +53,7 @@ std::string util::get_frame_hex(const std::vector<uint8_t> &frame, bool show_pre
 {
     std::ostringstream oss;
 
+    // TODO: refactor this? (used in util::to_hex_string as well, overload for vector?)
     for (std::vector<uint8_t>::size_type i = 0; i < frame.size(); ++i)
     {
         if (show_prefix)
@@ -78,7 +79,8 @@ void util::sleep(unsigned int seconds)
     ::sleep(seconds);
 }
 
-// prefixed null terminator instructs socket to be created in abstract namespace (not mapped to filesystem)
+// prefixed null terminator instructs socket to be created in abstract namespace (not mapped to
+// filesystem)
 int util::create_passive_abstract_domain_socket(const std::string &name, int type)
 {
     return create_passive_domain_socket(prefix_null_terminator(name), type);
@@ -102,7 +104,7 @@ int util::create_passive_domain_socket(const std::string &name, int type)
     socklen_t length = name.size() + sizeof(socket.sun_family);
     if (bind(socket_fd, (sockaddr *)&socket, length) == -1)
     {
-        perror("bind"); // TODO: get message string and log it with LOG()
+        perror("bind");    // TODO: get message string and log it with LOG()
         return -1;
     }
 
@@ -152,7 +154,7 @@ int util::accept_connection(int socket_fd)
     LOG(socket_fd, ": waiting for accept request");
     if ((request_socket_fd = accept(socket_fd, (sockaddr *)&request_socket, &length)) == -1)
     {
-        perror("accept");   // TODO: use logger
+        perror("accept");    // TODO: use logger
         return -1;
     }
 
@@ -203,8 +205,10 @@ bool util::try_parse_uint32_t(const std::string &str, uint32_t &out)
     return static_cast<bool>(std::istringstream(str) >> out);
 }
 
-// TODO: merge all socket code into util methods and verify return status of send/recv calls to ensure no data loss
-ssize_t util::nonblocking_recv(int socket_fd, std::vector<uint8_t> &buffer, size_t buffer_length, int &error)
+// TODO: merge all socket code into util methods and verify return status of send/recv calls to
+// ensure no data loss
+ssize_t util::nonblocking_recv(
+    int socket_fd, std::vector<uint8_t> &buffer, size_t buffer_length, int &error)
 {
     if (buffer_length == 0)
     {
@@ -224,7 +228,7 @@ ssize_t util::nonblocking_recv(int socket_fd, std::vector<uint8_t> &buffer, size
     {
         if (error != EAGAIN)
         {
-            perror("recv");     // TODO: get string and use LOG_ERROR()
+            perror("recv");    // TODO: get string and use LOG_ERROR()
         }
 
         return -1;
