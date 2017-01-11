@@ -12,9 +12,14 @@
 class tx_request_64_frame : public frame_data
 {
 public:
+    static const size_t FRAME_ID_OFFSET;
+    static const size_t DESTINATION_ADDRESS_OFFSET;
+    static const size_t OPTIONS_OFFSET;
+    static const size_t RF_DATA_OFFSET;
     static const size_t MIN_FRAME_DATA_LENGTH;
 
-    static std::shared_ptr<tx_request_64_frame> parse_frame(std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end);
+    static std::shared_ptr<tx_request_64_frame> parse_frame(
+        std::vector<uint8_t>::const_iterator begin, std::vector<uint8_t>::const_iterator end);
 
     enum options : uint8_t
     {
@@ -23,9 +28,12 @@ public:
         send_with_broadcast_pan_id = 0x04,
     };
 
-    // TODO: can have diagnostic tx_requests sent with enable_response_frame = true to see if writes are actually occurring
-    tx_request_64_frame(uint64_t destination_address, const std::vector<uint8_t> &rf_data, bool enable_response_frame = false);
-    tx_request_64_frame(uint8_t frame_id, uint64_t destination_address, uint8_t options_value, const std::vector<uint8_t> &rf_data);
+    // TODO: can have diagnostic tx_requests sent with enable_response_frame = true to see if writes
+    // are actually occurring
+    tx_request_64_frame(uint64_t destination_address, const std::vector<uint8_t> &rf_data,
+        bool enable_response_frame = false);
+    tx_request_64_frame(uint8_t frame_id, uint64_t destination_address, uint8_t options_value,
+        const std::vector<uint8_t> &rf_data);
 
     uint64_t get_destination_address() const;
     const std::vector<uint8_t> &get_rf_data() const;
@@ -36,7 +44,7 @@ private:
     uint8_t frame_id;
     uint64_t destination_address;
     uint8_t options_value;
-    std::vector<uint8_t> rf_data;   // TODO: max size 100 bytes
+    std::vector<uint8_t> rf_data;    // TODO: max size 100 bytes
 };
 
 #endif
