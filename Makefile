@@ -1,6 +1,6 @@
 # CXX = g++
 CXX = clang++
-# TODO: -fsanitize not working ?
+# TODO: -fsanitize needs to be added to compile+link commands, create separate flag to allow disabling
 CXXFLAGS += -std=c++11 -Wall -Wextra #-fsanitize=undefined #-g #-Wconversion
 CPPFLAGS += -MMD -MP -D STDIO_LOGGING_ENABLED -isystem $(GTEST_DIR)/include
 LDFLAGS += -lserial -lboost_system -pthread
@@ -53,13 +53,15 @@ gtest_main.o: $(GTEST_DIR)
 
 # note: need to be part of dialout group to access /dev/ttyUSB*
 # usage: make ARGS='<args>' test
-# TODO: figure out how to remove LD_LIBRARY_PATH prefix
 run: $(BIN)
-	LD_LIBRARY_PATH=/usr/local/lib ./$(BIN) $(ARGS)
+	./$(BIN) $(ARGS)
+
+vrun: $(BIN)
+	valgrind $(VALGRIND_FLAGS) ./$(BIN) $(ARGS)
 
 clean:
 	rm -f $(BIN) $(BIN_OBJ) *.d $(TEST_BIN) $(TEST_OBJ) $(GTEST_AR) $(GTEST_OBJ)
 
-.PHONY: clean run test vtest scan
+.PHONY: clean run vrun test vtest scan
 
 -include $(ALL_SRC:%.cc=%.d)

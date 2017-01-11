@@ -189,6 +189,10 @@ int main(int argc, char *argv[])
                     + util::to_hex_string(endpoint->get_address()));
             }
 
+            LOG("address:   ", util::to_hex_string(endpoint->get_address()));
+            LOG("server:    ./server_stream.py beehive", util::to_hex_string(endpoint->get_address()));
+            LOG("client:    ./client_stream.py beehive", util::to_hex_string(endpoint->get_address()));
+
             beehive(config, endpoint).run();
         }
     }
