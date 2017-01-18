@@ -2,6 +2,7 @@
 #define SIMULATED_BROADCAST_MEDIUM_H
 
 #include <memory>
+#include <random>
 #include <string>
 #include <thread>
 #include <vector>
@@ -24,12 +25,17 @@
 class simulated_broadcast_medium
 {
 public:
+    simulated_broadcast_medium(uint32_t packet_loss_percent);
+
     static std::vector<uint8_t> read_frame(int socket_fd);
 
     bool start();
     void node_traffic_forwarder(uint64_t node_address, int node_socket_fd);
 
 private:
+    uint32_t packet_loss_percent;
+    std::mt19937 mt;
+    std::uniform_int_distribution<uint32_t> dist;
     threadsafe_unordered_map<uint64_t, int> node_sockets;
 };
 

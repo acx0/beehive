@@ -1,10 +1,17 @@
 #include "simulated_broadcast_medium.h"
 
-// TODO: change signature to return failure status as bool and frame payload as out param? (0 sized payload is 'valid')
+simulated_broadcast_medium::simulated_broadcast_medium(uint32_t packet_loss_percent)
+    : packet_loss_percent(packet_loss_percent), mt(std::random_device()()), dist(0, 100)
+{
+}
+
+// TODO: change signature to return failure status as bool and frame payload as out param? (0 sized
+// payload is 'valid')
 std::vector<uint8_t> simulated_broadcast_medium::read_frame(int socket_fd)
 {
     std::vector<uint8_t> buffer(uart_frame::MAX_FRAME_SIZE);
-    ssize_t bytes_read = recv(socket_fd, buffer.data(), buffer.size(), 0);      // TODO: refactor into util::recv
+    // TODO: refactor into util::recv
+    ssize_t bytes_read = recv(socket_fd, buffer.data(), buffer.size(), 0);
 
     if (bytes_read <= 0)
     {
@@ -19,8 +26,10 @@ std::vector<uint8_t> simulated_broadcast_medium::read_frame(int socket_fd)
 bool simulated_broadcast_medium::start()
 {
     LOG("starting broadcast server");
+    LOG("packet loss percentage: ", packet_loss_percent);
 
-    int listen_socket_fd = util::create_passive_abstract_domain_socket(beehive_config::BROADCAST_SERVER_SOCKET_PATH, SOCK_SEQPACKET);
+    int listen_socket_fd = util::create_passive_abstract_domain_socket(
+        beehive_config::BROADCAST_SERVER_SOCKET_PATH, SOCK_SEQPACKET);
     if (listen_socket_fd == -1)
     {
         LOG_ERROR("broadcast server socket creation failed");
@@ -50,7 +59,8 @@ bool simulated_broadcast_medium::start()
 
         LOG("client ", util::to_hex_string(address), " connected");
 
-        std::thread traffic_forwarder(&simulated_broadcast_medium::node_traffic_forwarder, this, address, client_socket_fd);
+        std::thread traffic_forwarder(
+            &simulated_broadcast_medium::node_traffic_forwarder, this, address, client_socket_fd);
         traffic_forwarder.detach();
     }
 
@@ -72,31 +82,49 @@ void simulated_broadcast_medium::node_traffic_forwarder(uint64_t node_address, i
         if (frame->get_api_identifier() == frame_data::api_identifier::tx_request_64)
         {
             // simulate frame transmission and convert tx_request_64_frame into rx_packet_64_frame
-            std::shared_ptr<tx_request_64_frame> tx_frame = std::static_pointer_cast<tx_request_64_frame>(frame->get_data());
+            std::shared_ptr<tx_request_64_frame> tx_frame
+                = std::static_pointer_cast<tx_request_64_frame>(frame->get_data());
             uint64_t destination_address = tx_frame->get_destination_address();
-            uint8_t options = destination_address == xbee_s1::BROADCAST_ADDRESS ? (1 << rx_packet_64_frame::options_bit::address_broadcast) : 0;
-            uart_frame rx_frame(std::make_shared<rx_packet_64_frame>(node_address, 0, options, tx_frame->get_rf_data()));   // TODO: simulate rssi
+            uint8_t options = destination_address == xbee_s1::BROADCAST_ADDRESS
+                ? (1 << rx_packet_64_frame::options_bit::address_broadcast)
+                : 0;
+            uart_frame rx_frame(std::make_shared<rx_packet_64_frame>(
+                node_address, 0, options, tx_frame->get_rf_data()));    // TODO: simulate rssi
             auto payload = static_cast<std::vector<uint8_t>>(rx_frame);
 
             if (destination_address == xbee_s1::BROADCAST_ADDRESS)
             {
                 for (auto &entry : node_sockets.get_data())
                 {
+                    if (dist(mt) < packet_loss_percent)
+                    {
+                        LOG("dropb [", util::get_frame_hex(buffer), "]");
+                        continue;
+                    }
+
                     if (entry.first != node_address)
                     {
-                        send(entry.second, payload.data(), payload.size(), 0);  // TODO: util::send
+                        // TODO: util::send
+                        send(entry.second, payload.data(), payload.size(), 0);
                     }
                 }
             }
             else
             {
+                if (dist(mt) < packet_loss_percent)
+                {
+                    LOG("drop  [", util::get_frame_hex(buffer), "]");
+                    continue;
+                }
+
                 int destination_node_socket_fd;
                 if (!node_sockets.try_get(destination_address, destination_node_socket_fd))
                 {
                     continue;
                 }
 
-                send(destination_node_socket_fd, payload.data(), payload.size(), 0);    // TODO: util::send
+                // TODO: util::send
+                send(destination_node_socket_fd, payload.data(), payload.size(), 0);
             }
         }
         else

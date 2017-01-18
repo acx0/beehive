@@ -22,6 +22,7 @@ int main(int argc, char *argv[])
     bool read_xbee_config = false;
     bool custom_socket_path = false;
 
+    uint32_t packet_loss_percent = 0;
     uint32_t baud = xbee_s1::DEFAULT_BAUD;
     std::string device = xbee_s1::DEFAULT_DEVICE;
     beehive_config config;
@@ -98,6 +99,28 @@ int main(int argc, char *argv[])
             config = beehive_config(argv[i + 1]);
             ++i;
         }
+        else if (std::string(argv[i]) == "--packet-loss")
+        {
+            if (i + 1 == argc)
+            {
+                LOG_ERROR("percentage not supplied");
+                return EXIT_FAILURE;
+            }
+
+            if (!util::try_parse_uint32_t(argv[i + 1], packet_loss_percent))
+            {
+                LOG_ERROR("failed to parse percentage: ", argv[i + 1]);
+                return EXIT_FAILURE;
+            }
+
+            if (packet_loss_percent > 100)
+            {
+                LOG_ERROR("invalid percentage: ", packet_loss_percent);
+                return EXIT_FAILURE;
+            }
+
+            ++i;
+        }
         else
         {
             LOG_ERROR("invalid argument: ", argv[i]);
@@ -157,7 +180,9 @@ int main(int argc, char *argv[])
         }
         else if (simulate_wireless)
         {
-            return simulated_broadcast_medium().start() ? EXIT_SUCCESS : EXIT_FAILURE;
+            return simulated_broadcast_medium(packet_loss_percent).start()
+                ? EXIT_SUCCESS
+                : EXIT_FAILURE;
         }
         else if (read_xbee_config)
         {
