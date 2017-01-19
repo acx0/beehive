@@ -3,7 +3,11 @@
 const std::chrono::milliseconds beehive::WRITE_QUEUE_READ_TIMEOUT(5);
 
 beehive::beehive(const beehive_config &config, std::shared_ptr<communication_endpoint> endpoint)
-    : socket_path(config.get_beehive_socket_path()), endpoint(endpoint), frame_writer_queue(std::make_shared<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>>()), _channel_manager(config, frame_writer_queue), _datagram_socket_manager(config, frame_writer_queue)
+    : socket_path(config.get_beehive_socket_path()), endpoint(endpoint),
+      frame_writer_queue(
+          std::make_shared<threadsafe_blocking_queue<std::shared_ptr<std::vector<uint8_t>>>>()),
+      _channel_manager(config, frame_writer_queue),
+      _datagram_socket_manager(config, frame_writer_queue)
 {
 }
 
@@ -33,7 +37,9 @@ void beehive::log_segment(const connection_tuple &key, std::shared_ptr<message_s
     flags[2] = segment->is_syn() || segment->is_synack() ? 'S' : ' ';
     flags[3] = segment->is_fin() ? 'F' : ' ';
 
-    LOG("recv  ", key.to_string(), "[", flags, "] type(", +segment->get_message_type(), "), msg [", util::get_frame_hex(segment->get_message()), "] (", segment->get_message().size(), " bytes)");
+    LOG("recv  ", key.to_string(), "[", flags, "] type(", +segment->get_message_type(), "), msg [",
+        util::get_frame_hex(segment->get_message()), "] (", segment->get_message().size(),
+        " bytes)");
 }
 
 bool beehive::try_parse_ieee_address(const std::string &str, uint64_t &address)
@@ -74,7 +80,7 @@ void beehive::request_handler()
     int listen_socket_fd = util::create_passive_abstract_domain_socket(socket_path, SOCK_STREAM);
     if (listen_socket_fd == -1)
     {
-        return;     // TODO: retries
+        return;    // TODO: retries
     }
 
     // TODO: threadpool request handlers ?
@@ -175,7 +181,7 @@ void beehive::request_handler()
 
             for (auto i = current_neighbours.begin(); i != current_neighbours.end(); ++i)
             {
-                oss << std::setfill('0') << std::setw(16) << std::hex << i->first;  // TODO: util
+                oss << std::setfill('0') << std::setw(16) << std::hex << i->first;    // TODO: util
                 auto next = i;
 
                 if (++next != current_neighbours.end())
@@ -212,9 +218,12 @@ void beehive::frame_processor()
             }
 
             uint64_t source_address = rx_packet->get_source_address();
-            uint64_t destination_address = rx_packet->is_broadcast_frame() ? xbee_s1::BROADCAST_ADDRESS : endpoint->get_address();
+            uint64_t destination_address = rx_packet->is_broadcast_frame()
+                ? xbee_s1::BROADCAST_ADDRESS
+                : endpoint->get_address();
 
-            connection_tuple connection_key(source_address, segment->get_source_port(), destination_address, segment->get_destination_port());
+            connection_tuple connection_key(source_address, segment->get_source_port(),
+                destination_address, segment->get_destination_port());
             log_segment(connection_key, segment);
 
             switch (segment->get_message_type())
@@ -244,7 +253,7 @@ void beehive::frame_io_scheduler()
         auto rx_frame = endpoint->receive_frame();
         if (rx_frame != nullptr)
         {
-            frame_processor_queue.push(rx_frame);  // TODO: bound this queue to a certain size?
+            frame_processor_queue.push(rx_frame);    // TODO: bound this queue to a certain size?
         }
 
         std::shared_ptr<std::vector<uint8_t>> tx_frame;
@@ -262,7 +271,9 @@ void beehive::neighbour_discoverer()
     auto last_expiration_check = std::chrono::system_clock::now();
     auto expiration_check_interval = std::chrono::seconds(10);
     auto expiration_threshold = std::chrono::seconds(10);
-    auto segment = std::make_shared<message_segment>(0, 0, 0, message_segment::type::neighbour_discovery, message_segment::flag::none, message_segment::EMPTY_PAYLOAD);
+    auto segment
+        = std::make_shared<message_segment>(0, 0, 0, message_segment::type::neighbour_discovery,
+            message_segment::flag::none, message_segment::EMPTY_PAYLOAD);
     uart_frame frame(std::make_shared<tx_request_64_frame>(xbee_s1::BROADCAST_ADDRESS, *segment));
 
     while (true)
@@ -286,18 +297,22 @@ void beehive::neighbour_discoverer()
     }
 }
 
-void beehive::process_neighbour_discovery_message(uint64_t source_address, std::shared_ptr<message_segment> segment)
+void beehive::process_neighbour_discovery_message(
+    uint64_t source_address, std::shared_ptr<message_segment> segment)
 {
     if (segment->flags_empty())
     {
         // discovery request, reply with ack
-        auto segment = std::make_shared<message_segment>(0, 0, 0, message_segment::type::neighbour_discovery, message_segment::flag::ack, message_segment::EMPTY_PAYLOAD);
+        auto segment
+            = std::make_shared<message_segment>(0, 0, 0, message_segment::type::neighbour_discovery,
+                message_segment::flag::ack, message_segment::EMPTY_PAYLOAD);
         uart_frame frame(std::make_shared<tx_request_64_frame>(source_address, *segment));
         frame_writer_queue->push(std::make_shared<std::vector<uint8_t>>(frame));
     }
     else if (segment->is_ack())
     {
         LOG("discovered neighbour: ", util::to_hex_string(source_address));
-        neighbours[source_address] = neighbour_info{source_address, std::chrono::system_clock::now()};
+        neighbours[source_address]
+            = neighbour_info{source_address, std::chrono::system_clock::now()};
     }
 }

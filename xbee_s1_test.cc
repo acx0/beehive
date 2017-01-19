@@ -6,7 +6,7 @@
 
 namespace xbee_s1_test
 {
-    TEST(XBee, ConstValuesSpec)
+    TEST(XBeeS1Test, ConstValuesSpec)
     {
         ASSERT_EQ(0xffffffffffffffff, xbee_s1::ADDRESS_UNKNOWN);
         ASSERT_EQ(sizeof(uint64_t), sizeof(xbee_s1::BROADCAST_ADDRESS));
