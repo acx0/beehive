@@ -102,7 +102,7 @@ int util::create_passive_domain_socket(const std::string &name, int type)
     name.copy(socket.sun_path, name.size());
 
     socklen_t length = name.size() + sizeof(socket.sun_family);
-    if (bind(socket_fd, (sockaddr *)&socket, length) == -1)
+    if (bind(socket_fd, reinterpret_cast<const sockaddr *>(&socket), length) == -1)
     {
         perror("bind");    // TODO: get message string and log it with LOG()
         return -1;
@@ -136,7 +136,7 @@ int util::create_active_domain_socket(const std::string &name, int type)
     name.copy(remote_socket.sun_path, name.size());
     socklen_t length = name.size() + sizeof(remote_socket.sun_family);
 
-    if (connect(socket_fd, (sockaddr *)&remote_socket, length) == -1)
+    if (connect(socket_fd, reinterpret_cast<const sockaddr *>(&remote_socket), length) == -1)
     {
         perror("connect");
         return -1;
@@ -152,7 +152,9 @@ int util::accept_connection(int socket_fd)
     socklen_t length = sizeof(request_socket);
 
     LOG(socket_fd, ": waiting for accept request");
-    if ((request_socket_fd = accept(socket_fd, (sockaddr *)&request_socket, &length)) == -1)
+    if ((request_socket_fd
+            = accept(socket_fd, reinterpret_cast<sockaddr *>(&request_socket), &length))
+        == -1)
     {
         perror("accept");    // TODO: use logger
         return -1;
