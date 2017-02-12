@@ -141,7 +141,7 @@ public:
     }
 
 private:
-    const std::string get_time() const
+    const std::string get_time()
     {
         time_t raw_time;
         if (time(&raw_time) == static_cast<time_t>(-1))
@@ -149,7 +149,7 @@ private:
             return UNKNOWN;
         }
 
-        char *time_cstr = ctime(&raw_time);
+        char *time_cstr = ctime_r(&raw_time, buffer);
         if (time_cstr == nullptr)
         {
             return UNKNOWN;
@@ -160,7 +160,7 @@ private:
         return time_str;
     }
 
-    const std::string get_logline_header() const
+    const std::string get_logline_header()
     {
         std::ostringstream header;
         header << "[" << get_time() << " - ";
@@ -194,7 +194,9 @@ private:
         print_impl(rest...);
     }
 
+    static const size_t MIN_CTIME_BUFFER_SIZE = 26;
     const std::string UNKNOWN = "UNKNOWN";
+    char buffer[MIN_CTIME_BUFFER_SIZE];
     std::mutex write_lock;
     std::ostringstream log_stream;
     std::unique_ptr<Policy> policy;
