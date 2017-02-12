@@ -24,7 +24,7 @@ simulated_communication_endpoint::simulated_communication_endpoint()
     // register with broadcast server by sending local address
     std::vector<uint8_t> buffer;
     util::pack_value_as_bytes(std::back_inserter(buffer), address);
-    send(socket_fd, buffer.data(), buffer.size(), 0);
+    util::send(socket_fd, buffer);  // TODO: error handling
 }
 
 uint64_t simulated_communication_endpoint::get_address()
@@ -35,7 +35,7 @@ uint64_t simulated_communication_endpoint::get_address()
 void simulated_communication_endpoint::transmit_frame(const std::vector<uint8_t> &payload)
 {
     LOG("sim_write: [", util::get_frame_hex(payload), "]");
-    send(socket_fd, payload.data(), payload.size(), 0);
+    util::send(socket_fd, payload); // TODO: error handling
 }
 
 // TODO: change signature to return failure status as bool and frame payload as out param? (0 sized
@@ -54,7 +54,7 @@ std::shared_ptr<uart_frame> simulated_communication_endpoint::receive_frame()
     }
     else if (bytes_read == -1)
     {
-        if (error == EAGAIN)
+        if (error == EAGAIN || error == EWOULDBLOCK)
         {
             std::this_thread::sleep_for(
                 std::chrono::milliseconds(25));    // TODO: make configurable in beehive_config?

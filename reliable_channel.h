@@ -2,6 +2,7 @@
 #define RELIABLE_CHANNEL_H
 
 #include <chrono>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -204,9 +205,10 @@ private:
         // send as many segments as window size allows
         while (in_window(next_sequence_number))
         {
-            uint8_t buffer[91];    // TODO: make const value in message_segment
-            ssize_t bytes_read = recv(communication_socket_fd, buffer, sizeof(buffer), 0);
-            auto error = errno;
+            int error;
+            std::vector<uint8_t> buffer;
+            ssize_t bytes_read = util::nonblocking_recv(
+                communication_socket_fd, buffer, message_segment::MAX_SEGMENT_LENGTH, error);
 
             if (bytes_read == 0)
             {
@@ -216,12 +218,7 @@ private:
             }
             else if (bytes_read == -1)
             {
-                if (error == EAGAIN)
-                {
-                    break;
-                }
-
-                if (error == EWOULDBLOCK)
+                if (error == EAGAIN || error == EWOULDBLOCK)
                 {
                     break;
                 }
@@ -230,11 +227,10 @@ private:
                 return;
             }
 
-            auto payload
-                = std::vector<uint8_t>(std::begin(buffer), std::begin(buffer) + bytes_read);
+            buffer.resize(bytes_read);
             auto segment = std::make_shared<message_segment>(connection_key.destination_port,
                 connection_key.source_port, next_sequence_number,
-                message_segment::type::stream_segment, message_segment::flag::none, payload);
+                message_segment::type::stream_segment, message_segment::flag::none, buffer);
 
             std::unique_lock<std::mutex> lock(access_lock);
             ++next_sequence_number;
@@ -359,22 +355,13 @@ private:
                 while (segment_buffer.count(window_base) != 0)
                 {
                     auto payload = segment_buffer[window_base]->get_message();
-                    size_t bytes_left = payload.size();
-                    size_t payload_bytes_sent = 0;
-
-                    // TODO: factor out partial send logic into util method?
-                    while (payload_bytes_sent < bytes_left)
+                    if (util::send(communication_socket_fd, payload) == -1)
                     {
-                        ssize_t bytes_sent = send(communication_socket_fd,
-                            payload.data() + payload_bytes_sent, bytes_left, 0);
-                        if (bytes_sent == -1)
-                        {
-                            // TODO: error report
-                            return;    // TODO: how to handle?
-                        }
-
-                        payload_bytes_sent += bytes_sent;
-                        bytes_left -= bytes_sent;
+                        LOG_ERROR("channel corrupted");
+                        // TODO: some way to signal client that IPC failure has occurred -> reliable
+                        // channel corrupted?
+                        // TODO: have beehive_context/state object that tracks these counters, i.e.
+                        // beehive_state.increment_corrupted_channels
                     }
 
                     segment_buffer.erase(window_base++);

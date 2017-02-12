@@ -54,8 +54,6 @@ private:
     void payload_write_handler(
         int communication_socket_fd, uint16_t source_port, std::shared_ptr<bool> running);
 
-    // TODO: defining locally for now since currently used for stack allocated buffer
-    static const size_t MAX_MESSAGE_LENGTH;
     static uint32_t socket_suffix;
     static std::mutex socket_suffix_lock;
 

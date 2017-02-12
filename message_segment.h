@@ -7,6 +7,8 @@
 #include <numeric>
 #include <vector>
 
+#include "frame_data.h"
+#include "uart_frame.h"
 #include "util.h"
 
 // TODO: consistency: s/sequence_num/sequence_number/
@@ -25,6 +27,7 @@ public:
     static const size_t FLAGS_OFFSET;
     static const size_t MESSAGE_OFFSET;
     static const size_t MIN_SEGMENT_LENGTH;
+    static const size_t MAX_SEGMENT_LENGTH;
     static const std::vector<uint8_t> EMPTY_PAYLOAD;
 
     enum type : uint8_t
@@ -84,7 +87,6 @@ private:
     uint16_t sequence_num;
     uint16_t checksum;
     uint8_t flags;    // bits 0-3: message flags, bits 4-7: message type
-    // TODO: limit to 91 bytes (i.e. max_rf_data_size - message_segment overhead)
     std::vector<uint8_t> message;
 };
 

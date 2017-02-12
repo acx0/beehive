@@ -2,6 +2,7 @@
 #define UTIL_H
 
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <iomanip>
 #include <ios>
@@ -39,6 +40,10 @@ namespace util
     std::vector<std::string> split(const std::string &str, const std::string &separator);
     bool retry(std::function<bool()> function, uint32_t retries);
     bool try_parse_uint32_t(const std::string &str, uint32_t &out);
+    ssize_t send(int socket_fd, const std::vector<uint8_t> &buffer);
+    ssize_t send(int socket_fd, const std::vector<uint8_t> &buffer, int &error);
+    ssize_t recv(int socket_fd, std::vector<uint8_t> &buffer, size_t buffer_length);
+    ssize_t recv(int socket_fd, std::vector<uint8_t> &buffer, size_t buffer_length, int &error);
     ssize_t nonblocking_recv(
         int socket_fd, std::vector<uint8_t> &buffer, size_t buffer_length, int &error);
 

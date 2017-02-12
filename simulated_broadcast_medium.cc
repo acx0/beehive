@@ -9,17 +9,11 @@ simulated_broadcast_medium::simulated_broadcast_medium(uint32_t packet_loss_perc
 // payload is 'valid')
 std::vector<uint8_t> simulated_broadcast_medium::read_frame(int socket_fd)
 {
-    std::vector<uint8_t> buffer(uart_frame::MAX_FRAME_SIZE);
-    // TODO: refactor into util::recv
-    ssize_t bytes_read = recv(socket_fd, buffer.data(), buffer.size(), 0);
-
-    if (bytes_read <= 0)
-    {
-        return std::vector<uint8_t>();
-    }
-
-    buffer.resize(bytes_read);
-    return buffer;
+    std::vector<uint8_t> buffer;
+    ssize_t bytes_read = util::recv(socket_fd, buffer, uart_frame::MAX_FRAME_SIZE);
+    return bytes_read <= 0
+        ? std::vector<uint8_t>()
+        : buffer;
 }
 
 // TODO: cleanup socket fds
@@ -104,8 +98,7 @@ void simulated_broadcast_medium::node_traffic_forwarder(uint64_t node_address, i
 
                     if (entry.first != node_address)
                     {
-                        // TODO: util::send
-                        send(entry.second, payload.data(), payload.size(), 0);
+                        util::send(entry.second, payload);  // TODO: error handling
                     }
                 }
             }
@@ -123,8 +116,7 @@ void simulated_broadcast_medium::node_traffic_forwarder(uint64_t node_address, i
                     continue;
                 }
 
-                // TODO: util::send
-                send(destination_node_socket_fd, payload.data(), payload.size(), 0);
+                util::send(destination_node_socket_fd, payload);    // TODO: error handling
             }
         }
         else

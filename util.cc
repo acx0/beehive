@@ -169,6 +169,11 @@ bool util::try_configure_nonblocking_receive_timeout(int socket_fd)
     tv.tv_sec = 0;
     tv.tv_usec = 25000;    // 25ms timeout
 
+    // TODO: O_NONBLOCK vs SO_RCVTIMEO vs MSG_DONTWAIT ?
+    //  - seems O_NONBLOCK and MSG_DONTWAIT only configure/temporarily set nonblocking behaviour
+    //  without specifying timeout whereas SO_RCVTIMEO enforces timeout value
+    //  - might be preferrable to not enforce timeout value, otherwise client is bound to library
+    //  defined timeout value
     return setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != -1;
 }
 
@@ -205,8 +210,100 @@ bool util::try_parse_uint32_t(const std::string &str, uint32_t &out)
     return static_cast<bool>(std::istringstream(str) >> out);
 }
 
-// TODO: merge all socket code into util methods and verify return status of send/recv calls to
-// ensure no data loss
+ssize_t util::send(int socket_fd, const std::vector<uint8_t> &buffer)
+{
+    int error;
+    return send(socket_fd, buffer, error);
+}
+
+ssize_t util::send(int socket_fd, const std::vector<uint8_t> &buffer, int &error)
+{
+    if (buffer.empty())
+    {
+        LOG_ERROR(__PRETTY_FUNCTION__, ": empty buffer");
+        return -1;
+    }
+
+    size_t bytes_left = buffer.size();
+    size_t buffer_bytes_sent = 0;
+
+    // TODO: static number of attempts?
+    for (int attempts_left = 5; attempts_left > 0 && buffer_bytes_sent != buffer.size();
+         --attempts_left)
+    {
+        ssize_t bytes_sent = ::send(socket_fd, buffer.data() + buffer_bytes_sent, bytes_left, 0);
+        error = errno;
+
+        if (bytes_sent == -1)
+        {
+            char buf[256];
+            strerror_r(error, buf, sizeof(buf));
+            LOG_ERROR(__PRETTY_FUNCTION__, ": ", buf);
+            return -1;
+        }
+
+        buffer_bytes_sent += bytes_sent;
+        bytes_left -= bytes_sent;
+    }
+
+    // consider partial send a failure
+    if (buffer_bytes_sent != buffer.size())
+    {
+        LOG_ERROR(__PRETTY_FUNCTION__, ": partial send");
+        return -1;
+    }
+
+    return buffer_bytes_sent;
+}
+
+ssize_t util::recv(int socket_fd, std::vector<uint8_t> &buffer, size_t buffer_length)
+{
+    int error;
+    return recv(socket_fd, buffer, buffer_length, error);
+}
+
+ssize_t util::recv(int socket_fd, std::vector<uint8_t> &buffer, size_t buffer_length, int &error)
+{
+    if (buffer_length == 0)
+    {
+        return -1;
+    }
+
+    buffer.resize(buffer_length);
+    ssize_t bytes_read = ::recv(socket_fd, buffer.data(), buffer.size(), 0);
+    error = errno;
+
+    if (bytes_read == 0)
+    {
+        LOG_ERROR(__PRETTY_FUNCTION__, ": client connection closed");
+        return 0;
+    }
+    else if (bytes_read == -1)
+    {
+        // TODO: to have this method also support nonblocking socket, only print error if not
+        // EAGAIN/EWOULDBLOCK
+        char buf[256];
+        strerror_r(error, buf, sizeof(buf));
+        LOG_ERROR(__PRETTY_FUNCTION__, ": ", buf);
+        return -1;
+    }
+
+    buffer.resize(bytes_read);
+    return bytes_read;
+}
+
+// TODO:
+// blocking recv
+//     blocking socket    : util::recv
+//     nonblocking socket : util::recv?     TODO: test
+//         - would calling recv with flags=0 be nonblocking?
+//         - util::recv would have to be modified to not treat EAGAIN as errror
+// nonblocking recv
+//     blocking socket    : util::nonblocking_recv
+//     nonblocking socket : util::nonblocking_recv? TODO: test
+//         - should work?
+// TODO: how to enforce that a socket with nonblocking recv settings is configured?
+//  - use getsockopt/fcntl to check and throw exception if not?
 ssize_t util::nonblocking_recv(
     int socket_fd, std::vector<uint8_t> &buffer, size_t buffer_length, int &error)
 {
@@ -216,19 +313,22 @@ ssize_t util::nonblocking_recv(
     }
 
     buffer.resize(buffer_length);
-    ssize_t bytes_read = recv(socket_fd, buffer.data(), buffer.size(), MSG_DONTWAIT);
+    ssize_t bytes_read = ::recv(socket_fd, buffer.data(), buffer.size(), MSG_DONTWAIT);
     error = errno;
 
     if (bytes_read == 0)
     {
-        LOG_ERROR("client connection closed");
+        LOG_ERROR(__PRETTY_FUNCTION__, ": client connection closed");
         return 0;
     }
     else if (bytes_read == -1)
     {
-        if (error != EAGAIN)
+        // EAGAIN == EWOULDBLOCK on most systems (see errno(3), recv(2)), but not required by POSIX
+        if (error != EAGAIN && error != EWOULDBLOCK)
         {
-            perror("recv");    // TODO: get string and use LOG_ERROR()
+            char buf[256];
+            strerror_r(error, buf, sizeof(buf));
+            LOG_ERROR(__PRETTY_FUNCTION__, ": ", buf);
         }
 
         return -1;

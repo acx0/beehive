@@ -11,6 +11,11 @@ const size_t message_segment::CHECKSUM_OFFSET = SEQUENCE_NUM_OFFSET + sizeof(seq
 const size_t message_segment::FLAGS_OFFSET = CHECKSUM_OFFSET + sizeof(checksum);
 const size_t message_segment::MESSAGE_OFFSET = FLAGS_OFFSET + sizeof(flags);
 const size_t message_segment::MIN_SEGMENT_LENGTH = MESSAGE_OFFSET;
+const size_t message_segment::MAX_SEGMENT_LENGTH = uart_frame::MAX_FRAME_SIZE
+    - uart_frame::HEADER_LENGTH - sizeof(frame_data::api_identifier_value)
+    - sizeof(uint8_t) /* tx: frame_id, rx: rssi */ - sizeof(uint64_t) /* tx/rx: address */
+    - sizeof(uint8_t) /* tx/rx: options */ - sizeof(source_port) - sizeof(destination_port)
+    - sizeof(sequence_num) - sizeof(uint8_t) /* checksum */ - sizeof(checksum) - sizeof(flags);
 const std::vector<uint8_t> message_segment::EMPTY_PAYLOAD;
 
 message_segment::message_segment(uint16_t source_port, uint16_t destination_port,

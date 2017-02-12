@@ -25,24 +25,19 @@ bool beehive_message::is_message(const std::string &message_type, const std::str
 // return error code
 std::string beehive_message::read_message(int socket_fd)
 {
-    char buffer[MAX_SIZE];
-    ssize_t bytes_read = recv(socket_fd, buffer, sizeof(buffer), 0);
-
-    if (bytes_read == 0)
+    std::vector<uint8_t> buffer;
+    ssize_t bytes_read = util::recv(socket_fd, buffer, MAX_SIZE);
+    if (bytes_read <= 0)
     {
-        LOG_ERROR("client connection closed");
-        return std::string();
-    }
-    else if (bytes_read == -1)
-    {
-        perror("recv");    // TODO: get error string and use LOG_ERROR()
         return std::string();
     }
 
-    return std::string(buffer, bytes_read);
+    return std::string(buffer.data(), buffer.data() + buffer.size());
 }
 
 void beehive_message::send_message(int socket_fd, const std::string &message)
 {
-    send(socket_fd, message.c_str(), message.size(), 0);
+    auto bytes = reinterpret_cast<const uint8_t *>(message.c_str());
+    std::vector<uint8_t> buffer(bytes, bytes + message.size());
+    util::send(socket_fd, buffer);  // TODO: error handling
 }

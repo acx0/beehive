@@ -1,12 +1,15 @@
 #ifndef BEEHIVE_MESSAGE_H
 #define BEEHIVE_MESSAGE_H
 
+#include <cstdint>
 #include <string>
+#include <vector>
 
 #include <sys/socket.h>
 #include <sys/types.h>
 
 #include "logger.h"
+#include "util.h"
 
 class beehive_message
 {

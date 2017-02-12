@@ -46,6 +46,7 @@ namespace message_segment_test
         ASSERT_EQ(8, message_segment::FLAGS_OFFSET);
         ASSERT_EQ(9, message_segment::MESSAGE_OFFSET);
         ASSERT_EQ(9, message_segment::MIN_SEGMENT_LENGTH);
+        ASSERT_EQ(91, message_segment::MAX_SEGMENT_LENGTH);
         ASSERT_EQ(std::vector<uint8_t>(), message_segment::EMPTY_PAYLOAD);
 
         ASSERT_EQ(sizeof(uint8_t), sizeof(message_segment::type));

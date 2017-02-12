@@ -1,8 +1,5 @@
 #include "datagram_socket_manager.h"
 
-// TODO: calculate this based on uart_frame::MAX_FRAME_SIZE (add this)
-// TODO: move into message_segment, other places will need this constant
-const size_t datagram_socket_manager::MAX_MESSAGE_LENGTH = 91;
 uint32_t datagram_socket_manager::socket_suffix = 0;
 std::mutex datagram_socket_manager::socket_suffix_lock;
 
@@ -206,11 +203,7 @@ void datagram_socket_manager::payload_read_handler(int communication_socket_fd,
             datagram.segment->get_message().end());
 
         // TODO: will this have to be configured to be nonblocking?
-        // TODO: send() can send less than requested number of bytes, write util method to handle
-        // this
-        // TODO: can use write() instead of send if not using last arg -
-        // http://www.gnu.org/software/libc/manual/html_node/Sending-Data.html
-        if (send(communication_socket_fd, buffer.data(), buffer.size(), 0) == -1)
+        if (util::send(communication_socket_fd, buffer) == -1)
         {
             // TODO: check errno here or just fail completely? could have count of how many
             // consecutive fails have occured and only then exit
@@ -227,7 +220,7 @@ void datagram_socket_manager::payload_write_handler(
         int error;
         std::vector<uint8_t> buffer;
         ssize_t bytes_read = util::nonblocking_recv(communication_socket_fd, buffer,
-            sizeof(uint64_t) + sizeof(uint16_t) + MAX_MESSAGE_LENGTH, error);
+            sizeof(uint64_t) + sizeof(uint16_t) + message_segment::MAX_SEGMENT_LENGTH, error);
 
         if (bytes_read == 0)
         {
@@ -235,7 +228,7 @@ void datagram_socket_manager::payload_write_handler(
         }
         else if (bytes_read == -1)
         {
-            if (error == EAGAIN)
+            if (error == EAGAIN || error == EWOULDBLOCK)
             {
                 // TODO: add to beehive_config?
                 std::this_thread::sleep_for(std::chrono::milliseconds(25));
