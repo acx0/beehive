@@ -267,7 +267,7 @@ void channel_manager::payload_read_handler(int listen_socket_fd, connection_tupl
     }
 
     // TODO: will need to keep ref to channel to signal close
-    auto channel = std::make_shared<reliable_channel<uint16_t>>(
+    auto channel = std::make_shared<reliable_channel>(
         connection_key, communication_socket_fd, write_queue, segment_queue);
     channel->start_receiving();
 
@@ -301,9 +301,9 @@ void channel_manager::payload_write_handler(
         return;
     }
 
-    auto channel = std::make_shared<reliable_channel<uint16_t>>(
+    auto channel = std::make_shared<reliable_channel>(
         connection_key, communication_socket_fd, write_queue, segment_queue);
-    std::thread reliable_sender(&reliable_channel<uint16_t>::start_sending, channel);
+    std::thread reliable_sender(&reliable_channel::start_sending, channel);
 
     while (true)
     {
