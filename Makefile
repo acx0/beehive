@@ -1,7 +1,7 @@
 # CXX = g++
 CXX = clang++
 # TODO: -fsanitize needs to be added to compile+link commands, create separate flag to allow disabling
-CXXFLAGS += -std=c++11 -Wall -Wextra #-fsanitize=undefined #-g #-Wconversion
+CXXFLAGS += -std=c++11 -Wall -Wextra -Wold-style-cast #-Weffc++ #-fsanitize=undefined #-g #-Wconversion
 CPPFLAGS += -MMD -MP -D STDIO_LOGGING_ENABLED -isystem $(GTEST_DIR)/include
 LDFLAGS += -lserial -lboost_system -pthread
 

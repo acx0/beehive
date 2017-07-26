@@ -239,7 +239,9 @@ ssize_t util::send(int socket_fd, const std::vector<uint8_t> &buffer, int &error
         if (bytes_sent == -1)
         {
             char buf[256];
-            strerror_r(error, buf, sizeof(buf));
+            // TODO: strerror_r return value needs to be checked, getting garbage output
+            auto ret = strerror_r(error, buf, sizeof(buf));
+            LOG_ERROR("strerror_r return: ", ret);
             LOG_ERROR(__PRETTY_FUNCTION__, ": ", buf);
             return -1;
         }

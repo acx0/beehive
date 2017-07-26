@@ -40,6 +40,10 @@
 // TODO: create structure similar to transmission control block (tcp) to hold connection state? ->
 // reliable_channel_state ?
 
+// TODO: how to deal with bidirectional communication? currently algorithm is simplex
+//  - can we leverage same code to allow full duplex? e.g. after handshake is done?
+//      - how will we distinguish sequence numbers if running algorithm separately for send+recv?
+//          - flip MSB for send/recv?, would make seq_num_t::max() = 2^(width - 1)
 class reliable_channel
 {
 public:
@@ -94,7 +98,7 @@ private:
 
     int retransmission_timeout_int_ms;    // TODO: type?
     std::chrono::milliseconds retransmission_timeout;
-    std::chrono::milliseconds segment_queue_read_timeout;    // TODO: make static
+    std::chrono::milliseconds segment_queue_read_timeout;    // TODO: make static -> move these into global state/config object
 
     std::map<uint16_t, std::shared_ptr<message_segment>> segment_buffer;
     std::priority_queue<std::pair<std::chrono::system_clock::time_point, uint16_t>,

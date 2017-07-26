@@ -29,6 +29,9 @@
 #include "util.h"
 #include "xbee_s1.h"
 
+// TODO: will all communication sockets with clients be blocking?
+//  - document which ones will/won't -> have runtime checks
+
 struct neighbour_info
 {
     uint64_t address;

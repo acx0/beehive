@@ -9,6 +9,7 @@ channel_manager::channel_manager(const beehive_config &config,
 {
 }
 
+// TODO: this should be stored in globally accessible context/state object
 void channel_manager::set_local_address(uint64_t address)
 {
     local_address = address;
