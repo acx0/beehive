@@ -3,13 +3,14 @@ required dependencies:
     github.com/wjwwood/serial
 
 optional dependencies:
+    bear
     google test
     scan-build
     valgrind
 
 dependency installation (debian testing):
     $ sudo aptitude install build-essential libboost-all-dev catkin     # required
-    $ sudo aptitude install clang googletest valgrind                   # optional
+    $ sudo aptitude install bear clang googletest valgrind              # optional
     $ pushd "$(mktemp -d)"
     $ git clone https://github.com/wjwwood/serial.git
     $ cd serial

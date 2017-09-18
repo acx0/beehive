@@ -26,15 +26,11 @@ TEST_BIN = beehive-tests
 $(BIN): $(BIN_OBJ)
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
-# TODO: separate into two targets: build/run?
 test: $(TEST_BIN)
 	./$(TEST_BIN) $(GTEST_FLAGS) $(ARGS)
 
 vtest: $(TEST_BIN)
 	valgrind $(VALGRIND_FLAGS) ./$(TEST_BIN) $(GTEST_FLAGS) $(ARGS)
-
-scan:
-	scan-build make -j && scan-build make -j test
 
 $(TEST_BIN): $(TEST_DEP_OBJ) $(TEST_OBJ) $(GTEST_AR)
 	$(CXX) -o $@ $(TEST_DEP_OBJ) $(TEST_OBJ) gtest_main.a $(LDFLAGS)
@@ -52,7 +48,7 @@ gtest_main.o: $(GTEST_DIR)
 	$(CXX) -I$(GTEST_DIR) -c $(GTEST_DIR)/src/gtest_main.cc
 
 # note: need to be part of dialout group to access /dev/ttyUSB*
-# usage: make ARGS='<args>' test
+# usage: make ARGS='<args>' run
 run: $(BIN)
 	./$(BIN) $(ARGS)
 
@@ -60,8 +56,8 @@ vrun: $(BIN)
 	valgrind $(VALGRIND_FLAGS) ./$(BIN) $(ARGS)
 
 clean:
-	rm -f $(BIN) $(BIN_OBJ) *.d $(TEST_BIN) $(TEST_OBJ) $(GTEST_AR) $(GTEST_OBJ)
+	rm -f $(BIN) $(BIN_OBJ) *.d $(TEST_BIN) $(TEST_OBJ) $(GTEST_AR) $(GTEST_OBJ) *.plist compile_commands.json
 
-.PHONY: clean run vrun test vtest scan
+.PHONY: clean run vrun test vtest
 
 -include $(ALL_SRC:%.cc=%.d)

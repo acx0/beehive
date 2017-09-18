@@ -2,5 +2,7 @@
 *.d
 *.o
 *.swp
+*.plist
 beehive
 beehive-tests
+compile_commands.json
