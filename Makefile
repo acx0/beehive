@@ -1,7 +1,8 @@
 # CXX = g++
-CXX = clang++-4.0
+CXX = clang++
+CXX_STD = -std=c++14
 # TODO: -fsanitize needs to be added to compile+link commands, create separate flag to allow disabling
-CXXFLAGS += -std=c++14 -Wall -Wextra -Wold-style-cast #-Weffc++ #-fsanitize=undefined #-g #-Wconversion
+CXXFLAGS += $(CXX_STD) -Wall -Wextra -Wold-style-cast #-Weffc++ #-fsanitize=undefined #-g #-Wconversion
 
 # set gtest include directories as system directories to prevent warnings in gtest headers
 CPPFLAGS += -MMD -MP -D STDIO_LOGGING_ENABLED -isystem $(GTEST_DIR)/include -isystem $(GMOCK_DIR)/include
@@ -60,6 +61,13 @@ gmock-all.o: $(GMOCK_SRC)
 gmock_main.o: $(GMOCK_SRC)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -I$(GTEST_DIR) -I$(GMOCK_DIR) -c $(GMOCK_DIR)/src/gmock_main.cc
 
+# generate tag file of source files as well as any referenced system headers
+tags: $(BIN_SRC)
+	$(CXX) $(CXX_STD) -M $^ \
+	    | tr '\\ ' '\n' \
+	    | sed -e '/^$$/d' -e '/\.o:[ \t]*$$/d' \
+	    | ctags -L - --c++-kinds=+px --fields=+aiS --extra=+q
+
 # note: need to be part of dialout group to access /dev/ttyUSB*
 # usage: make ARGS='<args>' run
 .PHONY: run
@@ -72,6 +80,6 @@ vrun: $(BIN)
 
 .PHONY: clean
 clean:
-	rm -f $(BIN) $(BIN_OBJ) *.d $(TEST_BIN) $(TEST_OBJ) $(GTEST_OBJ) gmock_main.a *.plist compile_commands.json
+	rm -f $(BIN) $(BIN_OBJ) *.d $(TEST_BIN) $(TEST_OBJ) $(GTEST_OBJ) gmock_main.a *.plist compile_commands.json tags
 
 -include $(ALL_SRC:%.cc=%.d)
