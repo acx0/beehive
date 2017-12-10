@@ -1,12 +1,15 @@
 # CXX = g++
 CXX = clang++
 CXX_STD = -std=c++14
-# TODO: -fsanitize needs to be added to compile+link commands, create separate flag to allow disabling
-CXXFLAGS += $(CXX_STD) -Wall -Wextra -Wold-style-cast #-Weffc++ #-fsanitize=undefined #-g #-Wconversion
+CXXFLAGS += $(CXX_STD) -Wall -Wextra -Wold-style-cast $(SANITIZE_FLAGS) -O1 -g -fno-omit-frame-pointer
 
 # set gtest include directories as system directories to prevent warnings in gtest headers
 CPPFLAGS += -MMD -MP -D STDIO_LOGGING_ENABLED -isystem $(GTEST_DIR)/include -isystem $(GMOCK_DIR)/include
-LDFLAGS += -lserial -lboost_system -pthread
+LDFLAGS += -lserial -lboost_system -pthread $(SANITIZE_FLAGS)
+
+# available sanitizers: address,leak,memory,thread,undefined
+# note: disable when using valgrind, certain sanitizers conflict
+SANITIZE_FLAGS = -fsanitize=address,leak,undefined
 
 VALGRIND_FLAGS = --leak-check=yes
 
