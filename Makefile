@@ -32,9 +32,11 @@ TEST_BIN = beehive-tests
 $(BIN): $(BIN_OBJ)
 	$(CXX) $^ $(LDFLAGS) -o $@
 
+.PHONY: test
 test: $(TEST_BIN)
 	./$(TEST_BIN) $(GTEST_FLAGS) $(ARGS)
 
+.PHONY: vtest
 vtest: $(TEST_BIN)
 	valgrind $(VALGRIND_FLAGS) ./$(TEST_BIN) $(GTEST_FLAGS) $(ARGS)
 
@@ -60,15 +62,16 @@ gmock_main.o: $(GMOCK_SRC)
 
 # note: need to be part of dialout group to access /dev/ttyUSB*
 # usage: make ARGS='<args>' run
+.PHONY: run
 run: $(BIN)
 	./$(BIN) $(ARGS)
 
+.PHONY: vrun
 vrun: $(BIN)
 	valgrind $(VALGRIND_FLAGS) ./$(BIN) $(ARGS)
 
+.PHONY: clean
 clean:
 	rm -f $(BIN) $(BIN_OBJ) *.d $(TEST_BIN) $(TEST_OBJ) $(GTEST_OBJ) gmock_main.a *.plist compile_commands.json
-
-.PHONY: clean run vrun test vtest
 
 -include $(ALL_SRC:%.cc=%.d)
