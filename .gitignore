@@ -1,8 +1,9 @@
 *.a
 *.d
 *.o
-*.swp
 *.plist
+*.sw?
 beehive
 beehive-tests
 compile_commands.json
+tags
